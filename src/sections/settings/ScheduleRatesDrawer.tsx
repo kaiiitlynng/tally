@@ -35,12 +35,11 @@ export function ScheduleRatesDrawer({ onClose }: { onClose: () => void }) {
     <Dialog labelledBy="rates-title" onClose={onClose} placement="right" className="flex w-107.5 flex-col p-6.25">
       <div className="flex items-center justify-between border-b border-line pb-3.75">
         <div>
-          <p className="text-small font-semibold tracking-eyebrow text-eyebrow uppercase">Annual rate update</p>
-          <h2 id="rates-title" className="mt-1 text-title tracking-title font-semibold">
+          <h2 id="rates-title" className="text-title tracking-title font-semibold">
             Schedule 2026 rates
           </h2>
         </div>
-        <button type="button" aria-label="Close" onClick={onClose} className="rounded-md p-1 hover:bg-segment focus-visible:outline-2 focus-visible:outline-accent">
+        <button type="button" aria-label="Close" onClick={onClose} className="rounded-md p-1 hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent">
           <Icon name="close" size={18} />
         </button>
       </div>

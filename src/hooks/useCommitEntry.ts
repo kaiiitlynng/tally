@@ -6,7 +6,7 @@ import { demoToday, entryIsLocked, type Entry, type EntryForm, type EntryWarning
  * Returns 'locked' when the entry sits on an approved/exported invoice and cannot change.
  */
 export function useCommitEntry() {
-  const { store, update, me } = useDemo()
+  const { store, update, me, role } = useDemo()
 
   return (form: EntryForm, submit: boolean, acknowledged: EntryWarning[], existingId?: string): 'ok' | 'locked' => {
     const existing = existingId ? store.entries.find((e) => e.id === existingId) : undefined
@@ -35,7 +35,8 @@ export function useCommitEntry() {
       if (submit) {
         s.submissions[me.name] = 'Submitted'
         s.lastSubmitted[me.name] = demoToday
-        s.reminderLog.unshift(`${me.name} submitted time; pending overdue reminders canceled`)
+        // The partner isn't on the reminder schedule, so their own submissions don't touch the reminder log.
+        if (role !== 'partner') s.reminderLog.unshift(`${me.name} submitted time; pending overdue reminders canceled`)
         // Warnings the person confirmed still reach the billing reviewer as flags.
         acknowledged.forEach((w) =>
           s.flags.push({

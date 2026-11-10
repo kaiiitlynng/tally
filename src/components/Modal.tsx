@@ -50,7 +50,6 @@ export function Dialog({
 
 interface ModalProps {
   title: string
-  eyebrow?: string
   onClose: () => void
   /** Primary action label + handler (ignored when `footer` is given). */
   confirmLabel?: string
@@ -63,17 +62,16 @@ interface ModalProps {
 }
 
 /** Titled dialog with a close button and Cancel / confirm actions. */
-export function Modal({ title, eyebrow, onClose, confirmLabel, onConfirm, footer, size = 'md', children }: ModalProps) {
+export function Modal({ title, onClose, confirmLabel, onConfirm, footer, size = 'md', children }: ModalProps) {
   return (
     <Dialog labelledBy="modal-title" onClose={onClose} className={`rounded-xl p-7 ${size === 'md' ? 'w-120' : 'w-160'}`}>
       <div className="mb-5 flex items-start justify-between">
         <div>
-          {eyebrow && <p className="text-caption font-semibold tracking-eyebrow text-eyebrow uppercase">{eyebrow}</p>}
           <h2 id="modal-title" className="my-1 text-title font-semibold tracking-title">
             {title}
           </h2>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="-mt-1 -mr-1 rounded-sm p-2 text-ink-muted transition-colors hover:bg-segment focus-visible:outline-2 focus-visible:outline-accent">
+        <button type="button" onClick={onClose} aria-label="Close" className="-mt-1 -mr-1 rounded-sm p-2 text-ink-muted transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent">
           <Icon name="close" size={18} />
         </button>
       </div>

@@ -1,15 +1,16 @@
 /*
  * Design tokens: the only place raw values live.
  * The Figma file defines no variables, so layout values come from frame 37:15126. Visual style follows
- * stripe-design (light), per the owner (2026-11-09). Fonts stay DM Sans + Doto at the owner's request.
+ * stripe-design (light), per the owner (2026-11-09), with ONE owner override (2026-11-10): the accent is
+ * orange instead of stripe-design's violet. Fonts stay DM Sans + Doto at the owner's request.
  *
- * Palette (stripe-design SKILL.md / DESIGN.md):
- *   ink #0d253d (neutral-975), muted #3c4f69 (neutral-700), subtle #64748d (neutral-500, non-text or on white only)
- *   lines #d4dee9 (neutral-100), page #f5f5ff (brand-25), tint #e8e9ff (brand-50), brand-200 #b9b9f9
- *   brand #533afd (brand-600, buttons/active), brand-800 #2e2b8c (hover), accent #9966ff (focus, decor)
- *   warning #ffd552, magenta #f98bf9, info #0073e6 (gradient stops)
- * Status tints are NOT in the extracted palette; they are Stripe Dashboard badge colors, added because a
- * billing app needs success/danger states. Each ink/tint pair passes WCAG AA (>= 4.5:1).
+ * Palette:
+ *   ink #0d253d, muted #3c4f69, subtle #5e6e86 (4.9:1 on the page gray), lines #d4dee9 (stripe-design neutrals)
+ *   page #f9fbfd, neutral tint #ebeef1 (cool neutrals, replacing the violet-tinted page so orange doesn't clash)
+ *   brand #c2410c (buttons/active; white text 5.18:1), hover #9a3412, tints #fff8f1 / #fff1e6, light #fdba74
+ *   accent #ea580c (focus rings, decor; 3.56:1 on white, meets the 3:1 non-text rule; never body text)
+ *   warning #ffd552, magenta #f98bf9 (ribbon gradient stops)
+ * Status tints are Stripe Dashboard badge colors (success/danger), each pair >= 4.5:1.
  *
  * Token NAMES for colors are kept from the Figma build so components did not need renaming; values changed.
  */
@@ -20,28 +21,36 @@
   --font-display: "Doto", ui-monospace, monospace;
 
   /* ---------- Core palette ---------- */
-  --color-brand: #533afd;
-  --color-brand-hover: #2e2b8c;
-  --color-brand-200: #b9b9f9;
-  --color-brand-50: #e8e9ff;
-  --color-brand-25: #f5f5ff;
-  --color-accent: #9966ff; /* focus rings, decorative accents; never text on white (3.9:1) */
+  --color-brand: #c2410c;
+  --color-brand-hover: #9a3412;
+  --color-brand-200: #fdba74;
+  --color-brand-50: #fff1e6;
+  --color-brand-25: #fff8f1;
+  --color-wash: #fcfdfe; /* lightest fill, for panels inside white cards (Home start cards) */
+  --color-hover: #f4f6f9; /* every hover wash (rows, nav, menus, quiet buttons); orange is kept for selected/active */
+  /* Completed workflow steps in the sidebar: a lighter green than the success badges, distinct from the orange nav washes. */
+  --color-step-done: #ecfbe2;
+  --color-step-done-line: #b5e39a;
+  --color-step-done-ink: #2f8a1f;
+  --color-notify: #e8e9ff; /* notification counts: light purple (stripe-design brand-50) ... */
+  --color-notify-ink: #533afd; /* ... with brand-600 text, 5.17:1 */
+  --color-accent: #ea580c; /* focus rings, decorative accents; never body text (3.56:1 on white) */
   --color-deep: #061b31;
 
   /* ---------- Surfaces ---------- */
-  --color-canvas: #f5f5ff;
+  --color-canvas: #f9fbfd;
   --color-header: #ffffff;
   --color-sidebar: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-muted: #f5f5ff;
-  --color-segment: #e8e9ff; /* segmented-control track, hover wash */
+  --color-surface-muted: #f9fbfd;
+  --color-segment: #ebeef1; /* segmented-control track, hover wash */
   --color-step-idle: #ffffff;
   --color-white: #ffffff;
   --color-surface-soft: #ffffff;
-  --color-toggle: #f5f5ff;
-  --color-table-head: #f5f5ff;
-  --color-dropzone: #f5f5ff;
-  --color-dropzone-tile: #e8e9ff;
+  --color-toggle: #f9fbfd;
+  --color-table-head: #f9fbfd;
+  --color-dropzone: #f9fbfd;
+  --color-dropzone-tile: #fff1e6;
 
   /* ---------- Lines ---------- */
   --color-line: #d4dee9;
@@ -49,12 +58,12 @@
   --color-line-sidebar: #d4dee9;
   --color-line-row: #e8edf3; /* hairline between rows: one step lighter than #d4dee9 */
   --color-line-track: #d4dee9;
-  --color-line-step: #b9b9f9;
+  --color-line-step: #fdba74;
   --color-line-stat: #d4dee9;
   --color-line-field: #64748d; /* inputs need 3:1 against white (WCAG 1.4.11): 4.8:1 */
   --color-line-footer: #d4dee9;
   --color-line-mapping: #d4dee9;
-  --color-line-dashed: #b9b9f9;
+  --color-line-dashed: #fdba74;
 
   /* ---------- Text ---------- */
   --color-ink: #0d253d;
@@ -65,23 +74,23 @@
   --color-ink-dim: #3c4f69;
   --color-ink-segment: #3c4f69;
   --color-ink-subtle: #3c4f69;
-  --color-ink-divider: #64748d;
+  --color-ink-divider: #5e6e86;
   --color-ink-neutral: #3c4f69;
   --color-ink-field: #3c4f69;
-  --color-ink-placeholder: #64748d;
+  --color-ink-placeholder: #5e6e86;
   --color-ink-source: #3c4f69;
 
   /* ---------- Brand / accent roles ---------- */
-  --color-dark: #533afd; /* primary button, active nav, current step */
-  --color-eyebrow: #533afd;
-  --color-accent-soft: #e8e9ff;
-  --color-accent-ink: #533afd;
-  --color-accent-tile: #e8e9ff;
+  --color-dark: #c2410c; /* primary button, active nav, current step */
+  --color-eyebrow: #c2410c;
+  --color-accent-soft: #fff1e6;
+  --color-accent-ink: #c2410c;
+  --color-accent-tile: #fff1e6;
   --color-warn-tile: #ffe7f2;
-  --color-link: #533afd;
+  --color-link: #c2410c;
   --color-link-soft: #3c4f69;
-  --color-avatar: #e8e9ff;
-  --color-avatar-ink: #533afd;
+  --color-avatar: #fff1e6;
+  --color-avatar-ink: #c2410c;
 
   /* Hero ("Your next step") */
   --color-hero-line: #d4dee9;
@@ -96,69 +105,70 @@
   --color-warn-button-line: #d4dee9;
 
   /* Invoice review */
-  --color-review-frame: #e8e9ff;
+  --color-review-frame: #ebeef1;
   --color-review-frame-line: #d4dee9;
   --color-paper: #ffffff;
   --color-doc-rule: #0d253d;
-  --color-doc-mark: #533afd;
+  --color-doc-mark: #c2410c;
   --color-doc-line: #e8edf3;
-  --color-doc-head: #f5f5ff;
+  --color-doc-head: #f9fbfd;
   --color-doc-row: #e8edf3;
   --color-highlight: #fff8e1; /* flagged invoice line */
   --color-highlight-line: #ffd552;
   --color-panel: #ffffff;
   --color-panel-line: #d4dee9;
   --color-flag-type: #3c4f69;
-  --color-note: #f5f5ff;
+  --color-note: #f9fbfd;
   --color-suggest: #ffffff;
-  --color-suggest-line: #b9b9f9;
-  --color-suggest-label: #533afd;
+  --color-suggest-line: #fdba74;
+  --color-suggest-label: #c2410c;
   --color-impact: #0d253d;
 
   /* Empty states, Messages, invoice library */
   --color-ink-empty: #3c4f69;
   --color-inbox: #ffffff;
-  --color-thread-list: #f5f5ff;
+  --color-thread-list: #f9fbfd;
   --color-thread-line: #d4dee9;
-  --color-thread-active: #e8e9ff;
+  --color-thread-active: #fff1e6;
   --color-conversation: #ffffff;
-  --color-bubble: #f5f5ff;
-  --color-bubble-mine: #e8e9ff;
-  --color-linked-body: #f5f5ff;
+  --color-bubble: #f9fbfd;
+  --color-bubble-mine: #fff1e6;
+  --color-linked-body: #f9fbfd;
   --color-foot-ink: #0d253d;
-  --color-library: #f5f5ff;
+  --color-library: #f9fbfd;
   --color-library-aside: #ffffff;
 
   /* Team & Reminders */
   --color-stat-submitted: #d7f7c2;
   --color-stat-due: #fff8e1;
   --color-stat-overdue: #ffe7f2;
-  --color-teammate: #e8e9ff;
+  --color-teammate: #fff1e6;
   --color-danger-soft: #ffe7f2;
   --color-danger-ink: #b3093c;
-  --color-live-ring: #e8e9ff;
-  --color-log-dot: #b9b9f9;
-  --color-switch-on: #533afd;
+  --color-live-ring: #fff1e6;
+  --color-log-dot: #fdba74;
+  --color-switch-on: #c2410c;
   --color-switch-off: #64748d;
 
   /* Settings */
   --color-surface-faint: #ffffff;
-  --color-privacy: #f5f5ff;
+  --color-privacy: #f9fbfd;
   --color-human: #d7f7c2;
 
   /* Employee view */
   --color-hero-employee-from: #ffffff;
   --color-hero-employee-to: #ffffff;
-  --color-ring-line: #533afd;
-  --color-ring: #e8e9ff;
-  --color-quick-tile: #e8e9ff;
-  --color-mini-tile: #f5f5ff;
-  --color-tint-montrose: #e8e9ff;
-  --color-tint-aster: #fff8e1;
-  --color-tint-a: #e8e9ff;
-  --color-tint-b: #ffe7f2;
-  --color-tint-c: #d7f7c2;
-  --color-tint-d: #f5f5ff;
+  --color-ring-line: #c2410c;
+  --color-ring: #fff1e6;
+  --color-quick-tile: #fff1e6;
+  --color-mini-tile: #f9fbfd;
+  /* Project card tints: cool tones only (owner request 2026-11-10): blue, teal, lavender, sky, seafoam, slate. */
+  --color-tint-montrose: #edf3fd;
+  --color-tint-aster: #e7f6f5;
+  --color-tint-a: #f0effd;
+  --color-tint-b: #e8f4fb;
+  --color-tint-c: #e9f6ef;
+  --color-tint-d: #eef1f6;
   --color-card-rule: #e8edf3;
   --color-card-foot: #e8edf3;
   --color-ink-meta: #3c4f69;
@@ -175,26 +185,26 @@
   --color-confirm-ink: #0d253d;
   --color-confirm-body: #3c4f69;
   --color-tool-ink: #3c4f69;
-  --color-tool-active: #533afd;
-  --color-chip: #e8e9ff;
-  --color-chip-ink: #2e2b8c;
-  --color-filter-panel: #f5f5ff;
+  --color-tool-active: #c2410c;
+  --color-chip: #fff1e6;
+  --color-chip-ink: #9a3412;
+  --color-filter-panel: #f9fbfd;
   --color-filter-label: #3c4f69;
   --color-menu: #ffffff;
   --color-delete: #b3093c;
   --color-delete-soft: #ffe7f2;
   --color-protected-soft: #fff8e1;
-  --color-reply: #f5f5ff;
+  --color-reply: #f9fbfd;
   --color-drawer-row: #e8edf3;
   --color-reviewer-ink: #3c4f69;
-  --color-step-track: #e8e9ff;
+  --color-step-track: #ebeef1;
   --color-rate-note: #d7f7c2;
   --color-deadline-urgent: #a82c00;
   --color-deadline-overdue: #b3093c;
 
   /* States from the prototype code layer */
-  --color-orange: #9966ff; /* spinner head, unread marker */
-  --color-spinner-track: #e8e9ff;
+  --color-orange: #ea580c; /* spinner head, unread marker */
+  --color-spinner-track: #ebeef1;
   --color-done-soft: #d7f7c2;
   --color-done-line: #8ed16b;
   --color-done-ink: #006908;
@@ -203,7 +213,7 @@
   --color-modal: #ffffff;
   --color-scrim: rgb(6 27 49 / 0.45);
   --color-scrim-light: rgb(6 27 49 / 0.3);
-  --color-context: #f5f5ff;
+  --color-context: #f9fbfd;
   --color-waiting: #fff8e1;
   --color-waiting-ink: #a82c00;
   --color-activity-ink: #3c4f69;
@@ -219,9 +229,9 @@
   --color-success-ink: #006908;
 
   /* Project cards */
-  --color-project-tile: #e8e9ff;
-  --color-project-tile-ink: #533afd;
-  --color-member: #e8e9ff;
+  --color-project-tile: #fff1e6;
+  --color-project-tile-ink: #c2410c;
+  --color-member: #fff1e6;
   --color-member-ring: #ffffff;
 
   /* ---------- Type scale ----------
@@ -295,6 +305,7 @@
   --animate-toast: toast 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-ribbon: ribbon 16s ease-in-out infinite alternate;
   --animate-grow: grow 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-grow-y: grow-y 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes rise {
     from { opacity: 0; transform: translateY(12px); }
@@ -320,12 +331,18 @@
     from { transform: scaleX(0); }
     to { transform: scaleX(1); }
   }
+  @keyframes grow-y {
+    from { transform: translateX(-50%) scaleY(0); }
+    to { transform: translateX(-50%) scaleY(1); }
+  }
   @keyframes ribbon {
     from { transform: rotate(-16deg) translate3d(0, 0, 0); }
     to { transform: rotate(-10deg) translate3d(-32px, 16px, 0); }
   }
 
   /* ---------- Layout ---------- */
+  /* Desktop-only app (1100px min). `wide:` is where Home's two start cards switch from 50/50 to 60/40. */
+  --breakpoint-wide: 1360px;
   --spacing-sidebar: 240px;
   --spacing-header: 64px;
   --spacing-aside: 320px; /* right-hand "Needs attention" column */
@@ -352,12 +369,12 @@
 @utility ribbon {
   background-image: linear-gradient(
     100deg,
-    rgb(0 115 230 / 0) 0%,
-    rgb(0 115 230 / 0.3) 22%,
-    rgb(153 102 255 / 0.75) 42%,
-    rgb(249 139 249 / 0.8) 62%,
-    rgb(255 213 82 / 0.85) 82%,
-    rgb(255 213 82 / 0.6) 100%
+    rgb(255 213 82 / 0) 0%,
+    rgb(255 213 82 / 0.55) 20%,
+    rgb(255 159 67 / 0.8) 40%,
+    rgb(234 88 12 / 0.7) 62%,
+    rgb(249 139 249 / 0.7) 82%,
+    rgb(249 139 249 / 0.4) 100%
   );
   /* Feather the long edges so the band reads as light, not a solid shape. */
   mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 70%, transparent 100%);
@@ -402,5 +419,5 @@
 
 /* Conic version of the ribbon, used as the rim of the employee "days left" counter. */
 @utility ribbon-rim {
-  background-image: conic-gradient(from 200deg, #533afd, #9966ff, #f98bf9, #ffd552, #533afd);
+  background-image: conic-gradient(from 200deg, #c2410c, #ea580c, #ffd552, #f98bf9, #c2410c);
 }

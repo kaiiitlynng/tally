@@ -6,15 +6,14 @@ import { RequestTimeModal } from '../sections/team/RequestTimeModal'
 import { SubmissionStats } from '../sections/team/SubmissionStats'
 import { TeamTable } from '../sections/team/TeamTable'
 
-/** Team & Reminders (Figma 36:7718; "Request time now" modal 36:8726). */
+/** Manage Team (was Team & Reminders; Figma 36:7718; "Request time now" modal 36:8726). */
 export default function TeamReminders() {
   const [requesting, setRequesting] = useState(false)
 
   return (
     <>
       <PageTitle
-        eyebrow="May submission period"
-        title="Team & Reminders"
+        title="Manage Team"
         description="See who has submitted and automate courteous follow-up."
         actions={
           <DarkButton leadingIcon="bell-white" onClick={() => setRequesting(true)}>

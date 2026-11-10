@@ -46,7 +46,7 @@ export function HeldRowItem({ row }: { row: HeldRow }) {
 
   return (
     <li className="flex items-start gap-2.25 border-b border-line-row py-3.25">
-      <span className="grid size-8 shrink-0 place-items-center rounded-md bg-warn-tile">
+      <span className="grid size-5 shrink-0 place-items-center">
         <Icon name="review-doc-warn" size={18} />
       </span>
       <div className="min-w-0 flex-1">
@@ -72,7 +72,6 @@ export function HeldRowItem({ row }: { row: HeldRow }) {
       {mode === 'create' && <NewProjectModal initialName={row.matter} onClose={() => setMode(null)} onCreated={(id) => mapTo(id)} />}
       {mode === 'map' && (
         <Modal
-          eyebrow="Unrecognized case"
           title="Map to existing project"
           onClose={() => setMode(null)}
           footer={

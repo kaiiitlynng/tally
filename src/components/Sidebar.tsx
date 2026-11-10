@@ -2,7 +2,9 @@ import { NavLink } from 'react-router'
 import { useDemo } from './DemoContext'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
-import { invoicesNeedingReview, type Role } from '../data/store'
+import { StepMarker } from './StepMarker'
+import { invoicesNeedingReview } from '../data/store'
+import { WORKFLOW } from '../data/workflow'
 
 interface NavItem {
   to: string
@@ -11,64 +13,108 @@ interface NavItem {
   icon: string
 }
 
-const BILLING: NavItem[] = [
-  { to: '/', label: 'Home', icon: 'nav-home' },
-  { to: '/clients', label: 'Clients & Projects', icon: 'nav-clients-projects' },
-  { to: '/time', label: 'Time Entries', icon: 'nav-time-entries' },
-  { to: '/review', label: 'Ready for Review', icon: 'nav-review-invoices' },
-  { to: '/invoices', label: 'Approved & Sent', icon: 'nav-invoices' },
-]
+type Counts = Record<string, { n: number; sr: string }>
+
+const HOME: NavItem = { to: '/', label: 'Home', icon: 'nav-home' }
 
 const WORKSPACE: NavItem[] = [
   { to: '/messages', label: 'Messages', icon: 'nav-messages' },
-  { to: '/team', label: 'Team & Reminders', icon: 'nav-team-reminders' },
+  { to: '/team', label: 'Manage Team', icon: 'nav-team-reminders' },
   { to: '/settings', label: 'Settings', icon: 'nav-settings' },
 ]
 
-const NAV: Record<Role, { billing: NavItem[]; workspace: NavItem[] }> = {
-  partner: { billing: BILLING, workspace: WORKSPACE },
-  // Employee nav (Figma 36:11564) reuses the partner icons.
-  employee: {
-    billing: [BILLING[0], { ...BILLING[1], to: '/projects', label: 'My Projects' }, { ...BILLING[2], label: 'My Time' }],
-    workspace: [WORKSPACE[0]],
-  },
+// Employee nav (Figma 36:11564) reuses the partner icons; it has no billing workflow.
+const EMPLOYEE_BILLING: NavItem[] = [
+  HOME,
+  { to: '/projects', label: 'My Projects', icon: 'nav-clients-projects' },
+  { to: '/time', label: 'My Time', icon: 'nav-time-entries' },
+]
+
+const LINK = 'group relative flex h-10 items-center gap-3 rounded-sm px-3 text-body whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+const linkTone = (isActive: boolean) => (isActive ? 'bg-hover font-semibold text-brand' : 'font-medium text-ink-nav hover:bg-hover hover:text-ink')
+
+function ActiveBar() {
+  return <span aria-hidden="true" className="absolute inset-y-2 -left-4 w-0.75 animate-fade rounded-r-xs bg-brand" />
 }
 
-function NavGroup({ label, items, counts }: { label: string; items: NavItem[]; counts: Record<string, { n: number; sr: string }> }) {
+function CountBadge({ count }: { count?: { n: number; sr: string } }) {
+  if (!count?.n) return null
+  // Count badge: prototype code layer (.nav-item em), in the notification color; #533afd on #e8e9ff is 5.17:1.
+  return (
+    <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-pill bg-notify px-1.5 text-caption font-semibold text-notify-ink tabular-nums">
+      {count.n}
+      <span className="sr-only"> {count.sr}</span>
+    </span>
+  )
+}
+
+function NavItemLink({ item, counts }: { item: NavItem; counts: Counts }) {
+  return (
+    <NavLink to={item.to} end={item.to === '/'} className={({ isActive }) => `${LINK} ${linkTone(isActive)}`}>
+      {({ isActive }) => (
+        <>
+          {isActive && <ActiveBar />}
+          {/* Mask, not <img>: the icon takes the link's text color (brand when active). */}
+          <Icon tint name={item.icon} size={18} className="transition-transform duration-150 ease-stripe group-hover:scale-110 motion-reduce:transition-none" />
+          {item.label}
+          <CountBadge count={counts[item.to]} />
+        </>
+      )}
+    </NavLink>
+  )
+}
+
+function GroupLabel({ children, aside }: { children: string; aside?: string }) {
+  return (
+    <p className="flex items-baseline justify-between px-3 text-caption font-semibold tracking-group text-ink-label uppercase">
+      {children}
+      {aside && <span className="font-medium tracking-normal normal-case">{aside}</span>}
+    </p>
+  )
+}
+
+function NavGroup({ label, items, counts }: { label: string; items: NavItem[]; counts: Counts }) {
   return (
     <>
-      <p className="px-3 text-caption font-semibold tracking-group text-ink-label uppercase">{label}</p>
+      <GroupLabel>{label}</GroupLabel>
       <ul className="flex flex-col gap-0.5 pt-2">
         {items.map((item) => (
           <li key={item.to}>
-            <NavLink
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `group relative flex h-10 items-center gap-3 rounded-sm px-3 text-body whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                  isActive ? 'bg-brand-50 font-semibold text-brand' : 'font-medium text-ink-nav hover:bg-brand-25 hover:text-ink'
-                }`
-              }
-            >
+            <NavItemLink item={item} counts={counts} />
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+/**
+ * Partner Billing group as a vertical stepper: one row per step of the Home workflow tracker, each linking to
+ * the page that does that step.
+ */
+function BillingWorkflow({ counts }: { counts: Counts }) {
+  return (
+    <>
+      <GroupLabel>Billing</GroupLabel>
+      <ol className="relative flex flex-col gap-0.5 pt-2">
+        {/* One uniform rail through the step dots; no step is marked as current. */}
+        <li aria-hidden="true" className="absolute top-7 bottom-5 left-6 w-0.5 -translate-x-1/2 rounded-pill bg-brand" />
+        {WORKFLOW.map((step, i) => (
+          <li key={step.id}>
+            <NavLink to={step.page.to} className={({ isActive }) => `${LINK} ${linkTone(isActive)}`}>
               {({ isActive }) => (
                 <>
-                  {isActive && <span aria-hidden="true" className="absolute inset-y-2 -left-4 w-0.75 animate-fade rounded-r-xs bg-brand" />}
-                  {/* Mask, not <img>: the icon takes the link's text color (brand when active). */}
-                  <Icon tint name={item.icon} size={18} className="transition-transform duration-150 ease-stripe group-hover:scale-110 motion-reduce:transition-none" />
-                  {item.label}
-                  {counts[item.to]?.n > 0 && (
-                    // Count badge: prototype code layer (.nav-item em); white on #533afd is 6.6:1.
-                    <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-pill bg-brand px-1.5 text-caption font-semibold text-white tabular-nums">
-                      {counts[item.to].n}
-                      <span className="sr-only"> {counts[item.to].sr}</span>
-                    </span>
-                  )}
+                  {isActive && <ActiveBar />}
+                  <StepMarker />
+                  {step.page.label}
+                  <span className="sr-only">{`, step ${i + 1} of ${WORKFLOW.length}`}</span>
+                  <CountBadge count={counts[step.page.to]} />
                 </>
               )}
             </NavLink>
           </li>
         ))}
-      </ul>
+      </ol>
     </>
   )
 }
@@ -77,7 +123,6 @@ function NavGroup({ label, items, counts }: { label: string; items: NavItem[]; c
 export function Sidebar() {
   const { role, me, store } = useDemo()
   const unread = store.messages.filter((m) => m.unreadBy.includes(role)).length
-  const nav = NAV[role]
   const counts = {
     '/messages': { n: unread, sr: 'unread' },
     ...(role === 'partner' && { '/review': { n: invoicesNeedingReview(store), sr: 'invoices to review' } }),
@@ -87,23 +132,26 @@ export function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-20 flex w-sidebar flex-col overflow-y-auto border-r border-line-sidebar bg-sidebar px-4 pt-5 pb-4">
       <Logo />
       <nav aria-label="Main">
-        <NavGroup label="Billing" items={nav.billing} counts={counts} />
+        {role === 'partner' ? (
+          <>
+            <NavItemLink item={HOME} counts={counts} />
+            <div className="pt-5">
+              <BillingWorkflow counts={counts} />
+            </div>
+          </>
+        ) : (
+          <NavGroup label="Billing" items={EMPLOYEE_BILLING} counts={counts} />
+        )}
         <div className="px-3 pt-4" aria-hidden="true">
           <div className="h-px bg-line" />
         </div>
         <div className="pt-4">
-          <NavGroup label="Workspace" items={nav.workspace} counts={counts} />
+          <NavGroup label="Workspace" items={role === 'partner' ? WORKSPACE : [WORKSPACE[0]]} counts={counts} />
         </div>
       </nav>
 
       <div className="mt-auto">
-        <div className="relative overflow-hidden rounded-md border border-line bg-surface shadow-card-muted p-3 pt-4">
-          {/* Thin Stripe ribbon along the top edge marks this as the demo, not product chrome. */}
-          <span aria-hidden="true" className="ribbon absolute inset-x-0 top-0 h-1" />
-          <p className="text-small font-semibold text-ink">Interactive prototype</p>
-          <p className="pt-0.5 text-caption text-ink-muted">Synthetic data · no emails sent</p>
-        </div>
-        <div className="mt-3 flex items-center gap-2.5 border-t border-line px-1 pt-4">
+        <div className="flex items-center gap-2.5 border-t border-line px-1 pt-4">
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-avatar text-caption font-semibold text-avatar-ink">
             {me.initials}
           </span>

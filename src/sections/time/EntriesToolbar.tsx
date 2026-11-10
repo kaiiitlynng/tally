@@ -5,12 +5,14 @@ import type { Project } from '../../data/store'
 export interface EntryFilters {
   dateFrom: string
   dateTo: string
+  /** Partner only: one team member's entries. */
+  employee: string
   projectId: string
   status: string
   billable: string
   source: string
 }
-export const emptyFilters: EntryFilters = { dateFrom: '', dateTo: '', projectId: '', status: '', billable: '', source: '' }
+export const emptyFilters: EntryFilters = { dateFrom: '', dateTo: '', employee: '', projectId: '', status: '', billable: '', source: '' }
 
 export type SortKey = 'date' | 'employee' | 'project' | 'description' | 'source' | 'hours' | 'status'
 export interface EntrySort {
@@ -33,6 +35,8 @@ export const SORTS: [EntrySort, string][] = [
 interface ToolbarProps {
   count: number
   projects: Project[]
+  /** Shown as an Employee filter when given (partner view). */
+  employees?: string[]
   filters: EntryFilters
   setFilters: (f: EntryFilters) => void
   sort: EntrySort
@@ -50,7 +54,7 @@ const LABEL = 'mt-2.25 flex flex-col gap-1.25 text-caption font-semibold text-fi
  * "3 entries" + Filter / Sort / Search (Figma 36:12850 shows the closed toolbar; popovers follow the
  * prototype code layer). Click outside or Esc closes an open tool.
  */
-export function EntriesToolbar({ count, projects, filters, setFilters, sort, setSort, search, setSearch, structuredActive }: ToolbarProps) {
+export function EntriesToolbar({ count, projects, employees, filters, setFilters, sort, setSort, search, setSearch, structuredActive }: ToolbarProps) {
   const [open, setOpen] = useState<'filter' | 'sort' | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -76,7 +80,7 @@ export function EntriesToolbar({ count, projects, filters, setFilters, sort, set
     }
   }, [open, searchOpen])
 
-  const toolClass = (active: boolean) => `${TOOL} ${active ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-brand-25'}`
+  const toolClass = (active: boolean) => `${TOOL} ${active ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-hover'}`
   const set = (patch: Partial<EntryFilters>) => setFilters({ ...filters, ...patch })
 
   return (
@@ -166,8 +170,19 @@ export function EntriesToolbar({ count, projects, filters, setFilters, sort, set
                   <input type="date" value={filters.dateTo} onChange={(e) => set({ dateTo: e.target.value })} className={SELECT} />
                 </label>
               </div>
-              <p className="mt-1.75 text-caption text-ink-meta">Setting a range temporarily overrides the selected month.</p>
+              <p className="mt-1.75 text-caption text-ink-meta">Setting a range temporarily overrides the current month.</p>
             </div>
+            {employees && (
+              <label className={LABEL}>
+                Employee
+                <select value={filters.employee} onChange={(e) => set({ employee: e.target.value })} className={SELECT}>
+                  <option value="">All employees</option>
+                  {employees.map((name) => (
+                    <option key={name}>{name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className={LABEL}>
               Project
               <select value={filters.projectId} onChange={(e) => set({ projectId: e.target.value })} className={SELECT}>
@@ -220,7 +235,7 @@ export function EntriesToolbar({ count, projects, filters, setFilters, sort, set
                   setOpen(null)
                 }}
                 className={`flex min-h-7.75 w-full items-center justify-between rounded-sm px-2 text-left text-caption ${
-                  sameSort(sort, value) ? 'bg-segment text-success-ink' : 'text-ink-subtle hover:bg-segment hover:text-success-ink'
+                  sameSort(sort, value) ? 'bg-segment text-success-ink' : 'text-ink-subtle hover:bg-hover hover:text-success-ink'
                 }`}
               >
                 <span>{label}</span>

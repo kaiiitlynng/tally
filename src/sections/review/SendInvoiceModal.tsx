@@ -28,7 +28,6 @@ export function SendInvoiceModal({ projectId, onClose }: { projectId: string; on
   return (
     <Modal
       size="lg"
-      eyebrow="Email preview"
       title="Send to client"
       onClose={onClose}
       footer={

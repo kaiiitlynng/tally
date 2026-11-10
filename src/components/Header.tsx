@@ -1,15 +1,13 @@
-import { useLocation, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { useDemo } from './DemoContext'
-import { MonthPicker } from './MonthPicker'
 import { NotificationBell } from './NotificationBell'
-import { firm, periodLabel, currentPeriod, type Role } from '../data/store'
+import { firm, type Role } from '../data/store'
 
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
 /** Sticky top bar (Figma 36:12 partner, 36:11420 employee). */
 export function Header() {
   const { reset, role, setRole, me } = useDemo()
-  const { pathname } = useLocation()
   const navigate = useNavigate()
 
   const switchRole = (next: Role) => {
@@ -18,26 +16,10 @@ export function Header() {
     navigate('/')
   }
 
-  // Employee "My Projects" has no billing-month crumb; "My Time" gets the month picker (prototype Shell).
-  const crumb = role === 'employee' && pathname === '/projects' ? null : role === 'employee' && pathname === '/time' ? 'picker' : 'static'
-
   return (
     <header className="sticky top-0 z-10 flex h-header items-center justify-between border-b border-line-header bg-header px-8">
-      <div className="flex items-center gap-2">
-        <span className="text-body font-semibold text-ink">{firm}</span>
-        {crumb && (
-          <span className="text-lead text-line" aria-hidden="true">
-            /
-          </span>
-        )}
-        {crumb === 'picker' && <MonthPicker />}
-        {crumb === 'static' && (
-          // The prototype renders this as an inert button too; there is no partner month menu.
-          <button type="button" className={`rounded-sm px-2 py-1 text-body text-ink-muted transition-colors hover:bg-brand-25 hover:text-ink ${FOCUS}`} aria-label={`Billing month: ${periodLabel(currentPeriod)}`}>
-            {periodLabel(currentPeriod)} ⌄
-          </button>
-        )}
-      </div>
+      {/* The billing month is implied (always the current cycle), so the top bar carries no month control. */}
+      <span className="text-body font-semibold text-ink">{firm}</span>
 
       <div className="flex items-center gap-2.5">
         <div role="group" aria-label="View as" className="flex rounded-sm bg-surface-muted p-0.75 ring-1 ring-line">
@@ -59,7 +41,7 @@ export function Header() {
             reset()
             navigate('/')
           }}
-          className={`h-8 rounded-sm border border-line px-3 text-small font-medium text-ink-subtle transition-colors hover:border-brand-200 hover:bg-brand-25 hover:text-brand ${FOCUS}`}
+          className={`h-8 rounded-sm border border-line px-3 text-small font-medium text-ink-subtle transition-colors hover:border-brand-200 hover:bg-hover hover:text-brand ${FOCUS}`}
         >
           Reset demo
         </button>

@@ -11,8 +11,6 @@ const TONES = {
 const SIZES = {
   /** Auto-width badge (Figma 36:197). */
   md: 'h-6 px-2',
-  /** Status block used in time tables (Figma 36:1409); min width keeps a column of them aligned. */
-  lg: 'h-7 min-w-32 justify-center px-2.5',
 } as const
 
 export type PillTone = keyof typeof TONES

@@ -29,12 +29,11 @@ export function ProjectDrawer({ project, onClose }: { project: Project; onClose:
     <Dialog labelledBy="drawer-title" onClose={onClose} placement="right" className="w-107.5 p-6.25">
       <div className="flex items-center justify-between border-b border-line pb-3.75">
         <div>
-          <p className="text-small font-semibold tracking-eyebrow text-eyebrow uppercase">{periodLabel(currentPeriod)} billing period</p>
-          <h2 id="drawer-title" className="mt-1 text-title tracking-title font-semibold">
+          <h2 id="drawer-title" className="text-title tracking-title font-semibold">
             {project.name}
           </h2>
         </div>
-        <button type="button" aria-label="Close project details" onClick={onClose} className="rounded-md p-1 hover:bg-segment focus-visible:outline-2 focus-visible:outline-accent">
+        <button type="button" aria-label="Close project details" onClick={onClose} className="rounded-md p-1 hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent">
           <Icon name="close" size={18} />
         </button>
       </div>

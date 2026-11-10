@@ -5,7 +5,7 @@ import { Field, Select, TextInput } from '../../components/Field'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
 
-const TITLES = ['Client information', 'Project details', 'Billing configuration']
+export const NEW_PROJECT_STEPS = ['Client information', 'Project details', 'Billing configuration']
 const CATEGORIES = ['Consulting', 'Accounting and advisory', 'Legal services', 'Engineering', 'Creative agency']
 
 /** Three-step "New Project" flow (prototype code layer; not drawn in Figma). */
@@ -43,8 +43,7 @@ export function NewProjectModal({ onClose, onCreated, initialName = '' }: { onCl
   return (
     <Modal
       size="lg"
-      eyebrow={`Step ${step} of 3`}
-      title={TITLES[step - 1]}
+      title={NEW_PROJECT_STEPS[step - 1]}
       onClose={onClose}
       footer={
         <>
@@ -55,7 +54,7 @@ export function NewProjectModal({ onClose, onCreated, initialName = '' }: { onCl
         </>
       }
     >
-      <div className="mt-3 mb-6 flex gap-1.25" aria-hidden="true">
+      <div className="mb-6 flex gap-1.25" role="img" aria-label={`Step ${step} of 3`}>
         {[1, 2, 3].map((n) => (
           <i key={n} className={`h-0.75 flex-1 rounded-full ${n <= step ? 'bg-orange' : 'bg-step-track'}`} />
         ))}

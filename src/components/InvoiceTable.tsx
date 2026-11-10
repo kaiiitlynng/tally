@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { useDemo } from './DemoContext'
 import { Icon } from './Icon'
 import { Pill } from './Pill'
-import { completeness, invoiceTotal, isFinal, money, openFlagsFor } from '../data/store'
+import { completeness, currentPeriod, invoiceTotal, isFinal, money, openFlagsFor, periodRange } from '../data/store'
 
 // Column widths from Figma (36:165 / 36:6025): 190 / 86 / 86 / 55 / 80 / 92 / 55 px of 643px.
 const COLS = ['29.5%', '13.3%', '13.3%', '8.6%', '12.4%', '14.3%', '8.6%']
@@ -40,23 +40,23 @@ export function InvoiceTable({ actionLabel }: { actionLabel: 'Open' | 'Review' }
             const status = store.invoiceStatus[p.id]
             const tone = isFinal(status) ? 'success' : flags ? 'accent' : 'neutral'
             return (
-              <tr key={p.id} className="group transition-colors duration-150 hover:bg-brand-25">
+              <tr key={p.id} className="group transition-colors duration-150 hover:bg-hover">
                 <th scope="row" className={`${TD} pl-4 text-left font-normal`}>
                   <span className="block truncate font-semibold">{p.name}</span>
                   <span className="block truncate pt-0.5 text-caption text-ink-muted">{p.client}</span>
                 </th>
-                <td className={TD}>May 1–31</td>
+                <td className={TD}>{periodRange(currentPeriod, false)}</td>
                 <td className={`${TD} font-semibold`}>{money(invoiceTotal(store, p.id))}</td>
                 <td className={TD}>{flags}</td>
                 <td className={TD}>{completeness(store, p.id)}</td>
                 <td className={TD}>
                   <Pill tone={tone}>{status}</Pill>
                 </td>
-                <td className={`${TD} pr-4 text-right`}>
+                <td className={`${TD} pr-4`}>
                   <Link
                     to={`/review/${p.id}`}
                     aria-label={`${actionLabel} ${p.name}`}
-                    className="inline-flex h-8 items-center gap-1 rounded-sm px-2 text-small font-semibold text-link transition-colors hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="inline-flex h-8 items-center gap-1 rounded-sm px-2 text-small font-semibold text-link transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     {actionLabel}
                     <Icon name="arrow-right-small" size={14} className="transition-transform duration-150 group-hover:translate-x-0.5" />

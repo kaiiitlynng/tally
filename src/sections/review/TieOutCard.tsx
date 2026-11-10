@@ -23,12 +23,19 @@ export function TieOutCard({ projectId }: { projectId: string }) {
     </li>
   )
 
+  const passing = [true, custom === 0, traced].filter(Boolean).length
+
+  // Collapsed by default (owner request 2026-11-10: less density next to the decision); the summary shows the result.
   return (
-    <section aria-labelledby="tie-out" className="border-b border-line px-4 py-3.25">
-      <h2 id="tie-out" className="text-small font-semibold text-ink">
+    <details className="group border-t border-line px-4 py-3.25">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-small font-semibold text-ink">
+        <span className="inline-block w-2.75 text-caption text-hero-ink transition-transform group-open:rotate-90" aria-hidden="true">
+          ▸
+        </span>
         Tie-out
-      </h2>
-      <ul className="mt-1.5 flex flex-col gap-1">
+        <span className={`ml-auto text-caption font-normal ${passing === 3 ? 'text-ink-muted' : 'text-caution-ink'}`}>{passing} of 3 checks pass</span>
+      </summary>
+      <ul className="mt-2 flex flex-col gap-1">
         <Row ok>
           Hours from timesheets: {formatHours(timesheet)} · Hours on invoice: {formatHours(invoiced)}
           {adjusted !== 0 && <span className="text-ink-muted"> ({formatHours(Math.abs(adjusted))} adjusted in review)</span>}
@@ -37,6 +44,6 @@ export function TieOutCard({ projectId }: { projectId: string }) {
         <Row ok={traced}>Every entry traced to a source file or direct entry</Row>
       </ul>
       <p className="mt-1.5 text-caption text-ink-muted">Select a line description to see its source.</p>
-    </section>
+    </details>
   )
 }

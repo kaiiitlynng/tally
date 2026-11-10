@@ -30,16 +30,16 @@ Frame `37:15126` ("V3") is a desktop web-app prototype (1280px wide, no mobile f
 **Partner view (Vanessa Hart)** — built
 | Screen / state | Node ID | Component file |
 |---|---|---|
-| Shell: sidebar / header | 36:289 / 36:12 | src/components/Sidebar.tsx, Header.tsx, AppShell.tsx |
-| Home | 36:7 | src/pages/PartnerHome.tsx + src/sections/home/* |
-| Clients & Projects | 36:711 | src/pages/ClientsProjects.tsx + src/sections/clients/ProjectCard.tsx |
+| Shell: sidebar / header | 36:289 / 36:12 | src/components/Sidebar.tsx, Header.tsx, AppShell.tsx. Partner Billing nav is a stepper rendered from `src/data/workflow.ts` |
+| Home | 36:7 | src/pages/PartnerHome.tsx + src/sections/home/* (owner-requested: StartActions import + New Project first, then NextStepHero; the Figma workflow tracker is removed from Home and lives on as the sidebar stepper) |
+| Clients & Projects | 36:711 | src/pages/ClientsProjects.tsx + src/sections/clients/ProjectCard.tsx (Current / Past Projects tabs via src/components/SegmentedTabs.tsx) |
 | Time Entries: enter hours (36:2545, 36:5305 identical) | 36:1257 | src/pages/TimeEntries.tsx + src/sections/time/TimeEntryForm.tsx |
 | Time Entries: import drop zone (36:3221 identical) | 36:1933 | src/sections/time/ImportDropzone.tsx (+ ParsingState.tsx, code layer) |
 | Time Entries: column mapping (36:4569 identical) | 36:3833 | src/sections/time/ColumnMapping.tsx |
-| Time Entries: all submitted time | 36:1365 | src/sections/time/SubmittedTimeTable.tsx |
+| Time Entries: all submitted time | 36:1365 | src/sections/time/EntriesSection.tsx (partner: the table is the page; "Enter hours" opens an "Add time" dialog with the enter/import tabs, 2026-11-10; Home links open it via `?add=enter` / `?mode=import`; partner filter adds Employee) |
 | Ready for Review (was Review Invoices): list | 36:5983 | src/pages/ReviewInvoices.tsx + src/components/InvoiceTable.tsx |
 | Review Invoices: invoice review detail | 36:6409 | src/pages/InvoiceReview.tsx + src/sections/review/* |
-| Approved & Sent (was Invoices) | 36:7115 | src/pages/Invoices.tsx |
+| Approved & Sent (was Invoices) | 36:7115 | src/pages/Invoices.tsx (current cycle first, then "Past cycles" month groups from src/data/history.ts; `?invoice=<id>` deep link) |
 | Messages (empty; threads from code layer) | 36:7405 | src/pages/Messages.tsx |
 | Team & Reminders (36:9120 same layout) | 36:7718 | src/pages/TeamReminders.tsx + src/sections/team/* |
 | Team & Reminders: Request time now modal | 36:8726 | src/components/Modal.tsx (used in TeamReminders.tsx) |
@@ -71,77 +71,5 @@ Added from the code layer (no frames): New Project 3-step modal (src/sections/cl
 | Custom time request + reminder chips | src/sections/team/RequestTimeModal.tsx |
 | AI processing card (clear working data) | src/pages/Settings.tsx `AiProcessingCard` |
 | Sortable entry columns (default date, then last name) | src/sections/time/EntriesSection.tsx |
-
-Shared: sidebar (e.g. 36:289), header (e.g. 36:12).
-
-## Stack
-- Vite + React + TypeScript
-- Tailwind CSS v4 (`@tailwindcss/vite`)
-- No UI component libraries unless asked. Build components by hand to match the design.
-- Animation: CSS transitions first; use Framer Motion only if the design calls for something CSS can't do.
-
-## Commands
-- `npm run dev`: dev server (http://localhost:5173)
-- `npm run build`: production build (must pass before a task is done)
-- `npx tsc --noEmit`: type check
-
-## Project structure
-```
-src/
-  styles/tokens.css     # design tokens (@theme). The only place raw values live
-  components/           # shared pieces: Button, Nav, Footer, SectionHeading...
-  sections/             # one file per page section: Hero.tsx, Features.tsx...
-  App.tsx               # composes sections in page order
-public/assets/          # images, icons, logos exported from Figma
-reference/              # screenshots of Figma frames, for visual comparison
-```
-
-## Figma MCP workflow
-Follow this order for every section:
-
-0. **Map the frame once.** At the start of the project, call `get_metadata` with node ID `37:15126` to get its layer tree, then fill in the Section map above.
-1. **Read before writing.** Call `get_code` (or `get_design_context`) on one section's node ID from the Section map. Don't call it on the whole page. If the response is large, go down to child nodes.
-2. **Get variables.** Call `get_variable_defs` to pull Figma variables and styles. Map them into `src/styles/tokens.css` before building components.
-3. **Get a screenshot.** Call `get_screenshot` for the node and save it to `reference/<section>.png`. This is what "done" looks like.
-4. **Export assets.** Save images and SVGs that the MCP returns into `public/assets/` with descriptive kebab-case names (`hero-illustration.svg`, not `image-12.svg`). Use the asset URLs the MCP returns. Don't make up placeholder images or install icon packages to stand in for real assets.
-5. **Translate, don't paste.** MCP output is a reference, not final code. Rewrite it into our stack:
-   - Replace hardcoded hex values, pixel sizes, and font names with tokens.
-   - Replace absolute positioning with flex/grid layouts unless the design really overlaps elements.
-   - Reuse existing components in `src/components/` before creating new ones.
-6. **Build one section at a time.** Finish, verify, then move to the next. Don't scaffold the whole page in one pass.
-
-## Design tokens
-- All colors, font families, font sizes, line heights, letter spacing, radii, shadows, and spacing that recur go in `tokens.css` under `@theme`, named after the Figma variable (e.g. Figma `color/primary/500` → `--color-primary-500`).
-- Components use only Tailwind classes backed by tokens. No arbitrary values like `text-[#3A2F1B]` or `mt-[37px]`, except for one-off values that truly appear once. Leave a comment saying so.
-- Fonts: load via `@fontsource/*` packages or `<link>` in `index.html`, matching the exact families and weights in Figma.
-
-## Responsive behavior
-- Build mobile-first. Base styles match the mobile frame; `md:` / `lg:` match the desktop frame.
-- Target widths: 390px (mobile), 768px (tablet), 1440px (desktop). Nothing should break between them.
-- If there's no tablet frame, interpolate sensibly and note what you chose.
-
-## Fidelity rules
-- Match the Figma frame closely: spacing, type scale, colors, alignment, image crops.
-- Text content comes from Figma exactly as written. Don't rewrite copy.
-- Hover/focus/active states: use Figma's interactive variants if they exist; otherwise add subtle, consistent states and say so.
-- Animations and interactions in the Figma prototype (e.g. smart animate, scroll effects) should be listed and implemented. Ask if something is unclear.
-
-## Verification (required before saying a section is done)
-1. `npm run build` and `npx tsc --noEmit` pass with no errors.
-2. If Playwright MCP is available: screenshot the section at 390px and 1440px and compare against `reference/<section>.png`. Fix visible differences in spacing, sizing, color, and alignment. Repeat until it matches closely (max 3 rounds, then report what's left).
-3. Check: no console errors, images have `alt` text, interactive elements are real `<button>`/`<a>` tags and reachable by keyboard.
-
-## Accessibility & quality
-- Semantic HTML: `<header>`, `<nav>`, `<main>`, `<section>`, `<footer>`; one `<h1>` per page; heading levels in order.
-- Color contrast must meet WCAG AA. If the design fails, flag it rather than silently changing colors.
-- Images: `loading="lazy"` below the fold, explicit `width`/`height` to prevent layout shift.
-
-## Don'ts
-- Don't install new dependencies without saying why.
-- Don't change tokens to make one component look right. Fix the component.
-- Don't leave TODOs or placeholder content without listing them in your summary.
-- Don't read the entire Figma file at once; it blows the context window. Work node by node.
-- Don't touch any Figma node outside `37:15126`.
-
-## When reporting back
-Summarize per section: what was built, what deviates from Figma and why, and any open questions.
+| Billing cycles (2026-11-10): no month UI in the top bar (current cycle implied; MonthPicker removed); read-only archive of closed cycles (April/March 2025) and 2 closed projects; past invoices and projects viewable. New copy: "Past cycles", "Last billed …", "View invoice". | src/data/history.ts, src/pages/Invoices.tsx, src/pages/ClientsProjects.tsx, src/pages/MyProjects.tsx, `InvoicePaper` / `ArchivedInvoiceDocument` in src/sections/review/InvoiceDocument.tsx |
+| Owner pass (2026-11-10): no uppercase eyebrows above any heading; renames "Approved Invoices", "Manage Team", Settings "Team", role "Partner"; sidebar steps are solid dots (no "Step N of 4"), counts use `--color-notify`; all app tables left-aligned; cool project tints; Settings → Team add/remove members (`store.team`); flagged entry e2 moved to Nora so review questions reach the employee view; two-way Messages with partner notification on reply; review panel rebuilt for decisions (progress, invoice line, before → after, reply, collapsed tie-out). New copy: "Not yet", "Add team member", "Remove …?", "Reply to …", "Submit as corrected description", "Question N of M", "Up next", "N of 3 checks pass", "Nora replied: …". | src/components/StepMarker.tsx, Sidebar.tsx, src/pages/Settings.tsx, src/pages/Messages.tsx, src/sections/review/ReviewPanel.tsx, TieOutCard.tsx, src/data/store.ts |

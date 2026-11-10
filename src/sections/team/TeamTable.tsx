@@ -1,6 +1,6 @@
 import { useDemo } from '../../components/DemoContext'
 import { Pill, type PillTone } from '../../components/Pill'
-import { initials, people, type Submission } from '../../data/store'
+import { initials, type Submission } from '../../data/store'
 
 const TONE: Record<Submission, PillTone> = { Submitted: 'success', 'Due soon': 'accent', Overdue: 'danger' }
 // Column widths from Figma (36:7802): 242.77 / 161.85 / 131.51 / 121.39 / 161.85 / 141.62 px.
@@ -10,7 +10,7 @@ const TD = 'h-14.5 border-t border-line-row align-middle text-small text-ink'
 
 /** Team submission table (Figma 36:7801). */
 export function TeamTable() {
-  const { store, update } = useDemo()
+  const { store, update, me } = useDemo()
 
   return (
     <div className="mt-3.75 overflow-hidden rounded-lg border border-line bg-surface shadow-card">
@@ -33,11 +33,14 @@ export function TeamTable() {
           </tr>
         </thead>
         <tbody>
-          {people.map((p) => {
-            const status = store.submissions[p]
+          {store.team
+            // The partner doesn't remind themselves (owner request 2026-11-10).
+            .filter(({ name }) => name !== me.name)
+            .map(({ name: p }) => {
+            const status = store.submissions[p] ?? 'Due soon'
             const submitted = status === 'Submitted'
             return (
-              <tr key={p} className="transition-colors duration-150 hover:bg-brand-25">
+              <tr key={p} className="transition-colors duration-150 hover:bg-hover">
                 <th scope="row" className={`${TD} pl-4 text-left`}>
                   <span className="flex items-center gap-2">
                     <span className="grid size-7 place-items-center rounded-full bg-teammate text-caption font-normal" aria-hidden="true">
@@ -47,24 +50,23 @@ export function TeamTable() {
                   </span>
                 </th>
                 <td className={TD}>
-                  {new Date(`${store.lastSubmitted[p]}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
+                  {store.lastSubmitted[p] ? new Date(`${store.lastSubmitted[p]}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : 'Not yet'}
                 </td>
                 <td className={TD}>
                   <Pill tone={TONE[status]}>{status}</Pill>
                 </td>
                 <td className={TD}>June 3</td>
                 <td className={TD}>{submitted ? 'Canceled' : 'Scheduled'}</td>
-                <td className={`${TD} pr-4 text-right`}>
+                <td className={`${TD} pr-4`}>
                   <button
                     type="button"
-                    disabled={submitted}
                     aria-label={`Send reminder to ${p}`}
                     onClick={() =>
                       update((s) => {
                         s.reminderLog.unshift(`Manual in-app reminder sent to ${p} just now`)
                       })
                     }
-                    className="inline-flex h-8 items-center rounded-sm px-2.5 text-small font-semibold text-link transition-colors hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-accent disabled:bg-transparent disabled:font-normal disabled:text-ink-divider"
+                    className="inline-flex h-8 items-center rounded-sm px-2.5 text-small font-semibold text-link transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
                   >
                     Send reminder
                   </button>

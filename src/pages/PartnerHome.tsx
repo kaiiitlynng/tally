@@ -1,31 +1,28 @@
 import { PageTitle } from '../components/PageTitle'
 import { partner } from '../data/store'
-import { CollectTime } from '../sections/home/CollectTime'
 import { NeedsAttention } from '../sections/home/NeedsAttention'
 import { NextStepHero } from '../sections/home/NextStepHero'
-import { ProjectsReady } from '../sections/home/ProjectsReady'
-import { Workflow } from '../sections/home/Workflow'
+import { StartActions } from '../sections/home/StartActions'
 
-/** Partner home (Figma 36:7 → content 36:34). */
+/**
+ * Partner home (Figma 36:7 → content 36:34). Order changed from Figma at the owner's request: importing time
+ * and creating projects lead, then the next step. The workflow tracker (Figma 36:86) was removed from Home at the owner's
+ * request; the sidebar's Billing stepper shows the same progress.
+ */
 export default function PartnerHome() {
   return (
     <>
       <PageTitle
-        eyebrow="May billing cycle"
         title={`Good morning, ${partner.firstName}.`}
         description="Here is the clearest next step to keep billing moving."
       />
       <div className="pt-6">
+        <StartActions />
+      </div>
+      <div className="pt-6">
         <NextStepHero />
       </div>
-      <div className="pt-5.5">
-        <Workflow />
-      </div>
-      <div className="flex items-start gap-4.5 pt-7">
-        <div className="min-w-0 flex-1">
-          <CollectTime />
-          <ProjectsReady />
-        </div>
+      <div className="pt-6 [&>aside]:w-full">
         <NeedsAttention />
       </div>
     </>

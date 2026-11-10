@@ -6,11 +6,11 @@ import { Icon } from './Icon'
 const BASE =
   'group inline-flex h-10 items-center justify-center gap-2 rounded-sm border px-4 text-body font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-stripe active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:border-line disabled:bg-surface-muted disabled:text-ink-placeholder disabled:shadow-none motion-reduce:active:scale-100'
 
-/** Solid brand button (#533afd → #2e2b8c on hover). */
+/** Solid brand button (#c2410c → #9a3412 on hover). */
 const DARK = `${BASE} border-brand bg-brand text-white shadow-card hover:border-brand-hover hover:bg-brand-hover`
 
 /** Quiet button: white with a lavender border and brand text, like Stripe's secondary CTA. */
-const OUTLINE = `${BASE} border-line bg-surface text-ink hover:border-brand-200 hover:bg-brand-25 hover:text-brand`
+const OUTLINE = `${BASE} border-line bg-surface text-ink hover:border-brand-200 hover:bg-hover hover:text-brand`
 
 /** Trailing chevron that slides right on hover (Stripe's "Get started ›"). */
 function Arrow() {

@@ -1,22 +1,22 @@
 import { useState, type ReactNode } from 'react'
 import { DarkButton, OutlineButton } from '../components/Button'
-import { SegmentedRadio } from '../components/Field'
+import { Field, SegmentedRadio, TextInput } from '../components/Field'
 import { ScheduleRatesDrawer } from '../sections/settings/ScheduleRatesDrawer'
-import { Modal } from '../components/Modal'
+import { Disclaimer, Modal } from '../components/Modal'
 import { useDemo } from '../components/DemoContext'
 import { Icon } from '../components/Icon'
 import { PageTitle } from '../components/PageTitle'
 import { Switch } from '../components/Switch'
 import { onTabListKeyDown } from '../components/tabKeys'
-import { initials, money, people } from '../data/store'
+import { initials, money, type TeamMember } from '../data/store'
 
-const TABS = ['Billing rules', 'AI preferences', 'Team & permissions', 'Integrations', 'Data & privacy'] as const
+const TABS = ['Billing rules', 'AI preferences', 'Team', 'Integrations', 'Data & privacy'] as const
 type Tab = (typeof TABS)[number]
 
 const INTRO: Record<Tab, string> = {
   'Billing rules': 'Rates apply based on the work date. Existing entries keep their historical rate.',
   'AI preferences': 'Tally uses deterministic math for amounts and AI only for language and ambiguous matching.',
-  'Team & permissions': 'Employees only see assigned projects, their own entries, and billing requests sent to them.',
+  'Team': 'Employees only see assigned projects, their own entries, and billing requests sent to them.',
   Integrations: 'These connections are optional. External delivery is not active in this prototype.',
   'Data & privacy': 'Prototype controls below explain intended choices; they do not claim production security safeguards.',
 }
@@ -43,9 +43,9 @@ function BillingRules() {
 
   return (
     <>
-      <div className="mt-4 flex items-center justify-between">
-        <p className="text-caption text-ink-muted">{scheduled ? 'Time worked before Jan 1 keeps 2025 rates.' : ''}</p>
+      <div className="mt-4 flex items-center gap-3">
         <OutlineButton onClick={() => setScheduling(true)}>{scheduled ? 'Edit 2026 schedule' : 'Schedule 2026 rates'}</OutlineButton>
+        {scheduled && <p className="text-caption text-ink-muted">Time worked before Jan 1 keeps 2025 rates.</p>}
       </div>
       {scheduling && <ScheduleRatesDrawer onClose={() => setScheduling(false)} />}
       <div className="mt-3 overflow-hidden rounded-md border border-line">
@@ -64,8 +64,8 @@ function BillingRules() {
             </tr>
           </thead>
           <tbody>
-            {Object.entries(store.rates).map(([name, rate]) => (
-              <tr key={name} className="transition-colors duration-150 hover:bg-brand-25">
+            {store.team.map(({ name }) => [name, store.rates[name]] as const).map(([name, rate]) => (
+              <tr key={name} className="transition-colors duration-150 hover:bg-hover">
                 <th scope="row" className={`${TD} pl-3 text-left`}>
                   <span className="flex items-center gap-2">
                     <span className={`${AVATAR} font-normal`} aria-hidden="true">
@@ -98,7 +98,7 @@ function BillingRules() {
                   )}
                 </td>
                 <td className={TD}>Jan 1, 2025</td>
-                <td className={`${TD} pr-3 text-center`}>
+                <td className={`${TD} pr-3`}>
                   {/* Inert in the prototype code layer too; no project-override flow is designed. */}
                   <button type="button" className="rounded-md text-caption underline hover:text-link focus-visible:outline-2 focus-visible:outline-accent">
                     Set by project
@@ -178,46 +178,168 @@ function AiPreferences() {
   )
 }
 
-function TeamPermissions() {
+function AddMemberModal({ onClose }: { onClose: () => void }) {
+  const { store, update, me, toast } = useDemo()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [rate, setRate] = useState('')
+  const [role, setRole] = useState<TeamMember['role']>('Employee')
+  const [tried, setTried] = useState(false)
+
+  const errors = {
+    name: !name.trim()
+      ? 'Please enter a name.'
+      : store.team.some((m) => m.name.toLowerCase() === name.trim().toLowerCase())
+        ? 'This person is already on the team.'
+        : undefined,
+    email: /^\S+@\S+\.\S+$/.test(email.trim()) ? undefined : 'Please enter a valid email address.',
+    rate: Number(rate) > 0 ? undefined : 'Please enter an hourly rate above zero.',
+  }
+
+  function add() {
+    setTried(true)
+    if (errors.name || errors.email || errors.rate) return
+    const member = { name: name.trim(), email: email.trim(), role }
+    update((s) => {
+      s.team.push(member)
+      s.rates[member.name] = Number(rate)
+      s.submissions[member.name] = 'Due soon'
+      s.audit.unshift(`${me.firstName} added ${member.name} as ${role === 'Partner' ? 'a partner' : 'an employee'}`)
+    })
+    toast(`${member.name} added to the team`)
+    onClose()
+  }
+
   return (
-    <div className="mt-5.5">
-      {people.slice(0, 3).map((p, i) => (
-        <div key={p} className={ROW}>
-          <span className={AVATAR} aria-hidden="true">
-            {initials(p)}
-          </span>
-          <div className="flex-1">
-            <b className="block text-small font-semibold">{p}</b>
-            <small className="block pt-0.75 text-caption text-ink-muted">{i === 0 ? 'All projects' : 'Assigned projects only'}</small>
-          </div>
-          {/* Figma fixes this pill at 28×28 (text overflows); sized to content here. */}
-          <span className="rounded-lg bg-teammate px-2.25 py-1.25 text-caption font-semibold text-ink-neutral">{i === 0 ? 'Partner / reviewer' : 'Employee'}</span>
+    <Modal title="Add team member" confirmLabel="Add member" onConfirm={add} onClose={onClose}>
+      <div className="grid grid-cols-2 gap-3.5">
+        <Field label="Full name" htmlFor="tm-name" className="col-span-2" error={tried ? errors.name : undefined}>
+          <TextInput id="tm-name" autoFocus value={name} aria-invalid={tried && !!errors.name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jordan Reyes" />
+        </Field>
+        <Field label="Work email" htmlFor="tm-email" className="col-span-2" error={tried ? errors.email : undefined}>
+          <TextInput id="tm-email" type="email" value={email} aria-invalid={tried && !!errors.email} onChange={(e) => setEmail(e.target.value)} placeholder="name@hartwellknox.example" />
+        </Field>
+        <Field label="Standard rate ($/hour)" htmlFor="tm-rate" error={tried ? errors.rate : undefined}>
+          <TextInput id="tm-rate" type="number" min="0" value={rate} aria-invalid={tried && !!errors.rate} onChange={(e) => setRate(e.target.value)} placeholder="450" />
+        </Field>
+        <div>
+          <p id="tm-role" className="pb-1.5 text-small font-semibold text-ink">
+            Access
+          </p>
+          <SegmentedRadio name="tm-role" options={['Employee', 'Partner'] as const} value={role} onChange={setRole} labelledBy="tm-role" />
         </div>
-      ))}
-    </div>
+      </div>
+      <Disclaimer>No invitation email is sent in this prototype.</Disclaimer>
+    </Modal>
+  )
+}
+
+function Team() {
+  const { store, update, me, toast } = useDemo()
+  const [adding, setAdding] = useState(false)
+  const [removing, setRemoving] = useState<TeamMember | null>(null)
+
+  function remove() {
+    if (!removing) return
+    const { name } = removing
+    update((s) => {
+      s.team = s.team.filter((m) => m.name !== name)
+      delete s.submissions[name]
+      s.audit.unshift(`${me.firstName} removed ${name} from the team`)
+    })
+    toast(`${name} removed from the team`)
+    setRemoving(null)
+  }
+
+  return (
+    <>
+      <div className="mt-4">
+        <OutlineButton onClick={() => setAdding(true)}>Add team member</OutlineButton>
+      </div>
+      <ul className="mt-3">
+        {store.team.map((m) => {
+          const isMe = m.name === me.name
+          return (
+            <li key={m.name} className={ROW}>
+              <span className={AVATAR} aria-hidden="true">
+                {initials(m.name)}
+              </span>
+              {/* Name column is fixed-width so every role tag starts at the same left edge. */}
+              <div className="w-80 min-w-0">
+                <b className="block text-small font-semibold">
+                  {m.name}
+                  {isMe && <span className="font-normal text-ink-muted"> (you)</span>}
+                </b>
+                <small className="block truncate pt-0.75 text-caption text-ink-muted">{m.email}</small>
+              </div>
+              <span className="mr-auto rounded-lg bg-teammate px-2.25 py-1.25 text-caption font-semibold text-ink-neutral">{m.role}</span>
+              {/* The signed-in partner can't remove themselves. */}
+              <span className="w-20">
+                {!isMe && (
+                  <button
+                    type="button"
+                    onClick={() => setRemoving(m)}
+                    aria-label={`Remove ${m.name}`}
+                    className="inline-flex h-8 items-center rounded-sm px-2.5 text-small font-semibold text-delete transition-colors hover:bg-delete-soft focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    Remove
+                  </button>
+                )}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      {adding && <AddMemberModal onClose={() => setAdding(false)} />}
+      {removing && (
+        <Modal
+          title={`Remove ${removing.name}?`}
+          onClose={() => setRemoving(null)}
+          footer={
+            <>
+              <OutlineButton onClick={() => setRemoving(null)}>Cancel</OutlineButton>
+              <button
+                type="button"
+                onClick={remove}
+                className="inline-flex h-10 items-center rounded-sm bg-delete px-4 text-body font-semibold text-white shadow-card transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+              >
+                Remove member
+              </button>
+            </>
+          }
+        >
+          <p className="text-small leading-normal text-ink-neutral">
+            {removing.name.split(' ')[0]} will lose access to Tally. Submitted time, invoices and rate history stay on the firm&apos;s records.
+          </p>
+        </Modal>
+      )}
+    </>
   )
 }
 
 function Integrations() {
+  // Calendar sits above QuickBooks; QuickBooks is a future capability, so its control is muted and inert.
   const items = [
-    ['Email', 'In-app works · external email demo only', 'integration-email'],
-    ['QuickBooks', 'Future capability', 'integration-folder'],
-    ['Calendar', 'Optional context for missing time', 'integration-calendar'],
-    ['Time tracking platforms', 'Future capability', 'integration-folder'],
+    ['Email', 'In-app works · external email demo only', 'integration-gmail'],
+    ['Calendar', 'Optional context for missing time', 'integration-google-calendar'],
+    ['QuickBooks', 'Future capability', 'integration-quickbooks'],
   ]
   return (
     <div className="mt-5.5">
       {items.map(([name, hint, icon]) => (
         <div key={name} className={ROW}>
-          <span className="grid size-9 shrink-0 place-items-center rounded-md bg-project-tile">
-            <Icon name={icon} size={18} />
+          <span className="grid size-6 shrink-0 place-items-center">
+            {/* Brand marks (Gmail, QuickBooks, Google Calendar) keep their own colors; generic rows use the UI icon. */}
+            <Icon name={icon} size={22} />
           </span>
           <div className="flex-1">
             <b className="block text-small font-semibold">{name}</b>
             <small className="block pt-0.75 text-caption text-ink-muted">{hint}</small>
           </div>
           {/* Connections are not available in the prototype. */}
-          <OutlineButton aria-label={`${name}: not connected`}>Not connected</OutlineButton>
+          <OutlineButton aria-label={`${name}: not connected`} disabled={name === 'QuickBooks'} className={name === 'QuickBooks' ? 'opacity-50' : ''}>
+            Not connected
+          </OutlineButton>
         </div>
       ))}
     </div>
@@ -272,7 +394,6 @@ function AiProcessingCard() {
       </div>
       {confirming && (
         <Modal
-          eyebrow="Data & privacy"
           title="Clear AI working data?"
           onClose={() => setConfirming(false)}
           footer={
@@ -316,12 +437,11 @@ function DataPrivacy() {
           Removing temporary AI working data is not the same as deleting invoices or legally required accounting records.
         </PrivacyCard>
       </div>
-      {/* Both actions are inert in the prototype code layer. */}
+      {/* Inert in the prototype code layer. "Review retention settings" was removed (2026-11-10): it had no flow. */}
       <div className="flex gap-2 pt-4.5">
         <OutlineButton className="gap-2">
           <Icon name="download-dark" size={18} /> Export firm data
         </OutlineButton>
-        <OutlineButton>Review retention settings</OutlineButton>
       </div>
     </>
   )
@@ -330,7 +450,7 @@ function DataPrivacy() {
 const PANELS: Record<Tab, () => ReactNode> = {
   'Billing rules': BillingRules,
   'AI preferences': AiPreferences,
-  'Team & permissions': TeamPermissions,
+  Team,
   Integrations,
   'Data & privacy': DataPrivacy,
 }
@@ -342,9 +462,9 @@ export default function Settings() {
 
   return (
     <>
-      <PageTitle eyebrow="Workspace controls" title="Settings" description="Plain-language controls for billing, review, access, and connected services." />
+      <PageTitle title="Settings" description="Plain-language controls for billing, review, access, and connected services." />
       <div className="grid grid-cols-[210px_1fr] gap-3.5 pt-6">
-        <div role="tablist" aria-orientation="vertical" aria-label="Settings sections" onKeyDown={onTabListKeyDown} className="flex flex-col self-start rounded-lg border border-line bg-surface shadow-card-faint p-1.75">
+        <div role="tablist" aria-orientation="vertical" aria-label="Settings sections" onKeyDown={onTabListKeyDown} className="flex flex-col self-start rounded-lg border border-line bg-surface-faint p-1.75">
           {TABS.map((t) => (
             <button
               key={t}
@@ -355,7 +475,7 @@ export default function Settings() {
               aria-controls="settings-panel"
               onClick={() => setTab(t)}
               className={`h-10 rounded-sm px-3 text-left text-body transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent ${
-                tab === t ? 'bg-brand-50 font-semibold text-brand' : 'text-ink-muted hover:bg-brand-25 hover:text-ink'
+                tab === t ? 'bg-brand-50 font-semibold text-brand' : 'text-ink-muted hover:bg-hover hover:text-ink'
               }`}
             >
               {t}

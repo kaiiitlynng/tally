@@ -4,16 +4,16 @@ import { uid, useDemo } from '../../components/DemoContext'
 import { Field, Select, TextArea, TextInput } from '../../components/Field'
 import { FieldMessage } from '../../components/Field'
 import { Disclaimer, Modal } from '../../components/Modal'
-import { demoToday, partner, people } from '../../data/store'
+import { demoToday } from '../../data/store'
 
-const team = people.filter((p) => p !== partner.name)
 const longDate = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 
 /** "Request time now" (Figma 36:8726, extended by spec item 7): recipients, cut-off date, preview, send in-app. */
 export function RequestTimeModal({ onClose }: { onClose: () => void }) {
   const { store, update, me } = useDemo()
+  const team = store.team.filter((m) => m.name !== me.name).map((m) => m.name)
   const [projectId, setProjectId] = useState(store.projects[0]?.id ?? 'all')
-  const defaults = (id: string) => (id === 'all' ? team : (store.projects.find((p) => p.id === id)?.people.filter((p) => p !== partner.name) ?? []))
+  const defaults = (id: string) => (id === 'all' ? team : (store.projects.find((p) => p.id === id)?.people.filter((p) => team.includes(p)) ?? []))
   const template = (id: string) => (id === 'all' ? 'Please submit all time through today.' : `${store.projects.find((p) => p.id === id)?.name} has settled. Please submit all time through today.`)
   const [recipients, setRecipients] = useState<string[]>(() => defaults(projectId))
   const [through, setThrough] = useState(demoToday)
@@ -54,7 +54,6 @@ export function RequestTimeModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal
-      eyebrow="Urgent request"
       title={step === 'compose' ? 'Request time now' : 'Preview request'}
       onClose={onClose}
       footer={
@@ -99,7 +98,7 @@ export function RequestTimeModal({ onClose }: { onClose: () => void }) {
                   <label
                     key={person}
                     className={`flex h-9 items-center gap-1.5 rounded-pill border px-3.5 text-small font-medium transition-colors duration-150 has-focus-visible:outline-2 has-focus-visible:outline-accent ${
-                      on ? 'border-brand bg-brand-50 text-brand' : 'border-line bg-white text-ink hover:border-brand-200 hover:bg-brand-25'
+                      on ? 'border-brand bg-brand-50 text-brand' : 'border-line bg-white text-ink hover:border-brand-200 hover:bg-hover'
                     }`}
                   >
                     <input

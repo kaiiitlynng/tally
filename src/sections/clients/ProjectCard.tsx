@@ -1,51 +1,84 @@
+import { Link, useNavigate } from 'react-router'
+import { DarkButton, OutlineButton } from '../../components/Button'
 import { Pill } from '../../components/Pill'
-import { initials, type Project } from '../../data/store'
+import { CARD, CARD_AVATAR, CARD_META } from '../../components/projectCardStyles'
+import { lastBilled } from '../../data/history'
+import { projectTint } from '../../data/progress'
+import { initials, tableDate, type Project } from '../../data/store'
+import type { TimeIntent } from '../../pages/TimeEntries'
 
-/** One client project card (Figma 36:758). */
-export function ProjectCard({ project }: { project: Project }) {
-  const facts = [
-    ['Type', project.type],
-    ['Reviewer', project.reviewer],
-    ['Team', `${project.people.length} people`],
-    ['Time due', project.deadline],
-  ]
-  const monogram = project.name.slice(0, 2).toUpperCase()
+/**
+ * Partner project card (Figma 36:758 content), laid out like the employee My Projects card (Figma 36:11839):
+ * tinted card, title + client line, a ruled stats row, two actions, then reviewer and team.
+ * `archived` = closed in an earlier cycle: shows completion and last billed cycle, links to that invoice.
+ */
+export function ProjectCard({ project: p, archived = false }: { project: Project; archived?: boolean }) {
+  const navigate = useNavigate()
+  const billed = archived ? lastBilled(p.id) : undefined
+  const stats: [string, React.ReactNode][] = archived
+    ? [
+        ['PROJECT STATUS', <Pill tone="neutral">{p.status}</Pill>],
+        ['COMPLETED', p.completedDate ? tableDate(p.completedDate) : 'Date not recorded'],
+        ['LAST BILLED', billed?.label ?? '—'],
+      ]
+    : [
+        ['PROJECT STATUS', <Pill tone={p.status === 'Active' ? 'success' : 'neutral'}>{p.status}</Pill>],
+        ['TYPE', p.type],
+        ['TIME DUE', p.deadline],
+      ]
 
   return (
-    <article className="flex flex-col rounded-lg border border-line bg-surface p-5 shadow-card">
-      <div className="flex items-start justify-between">
-        <span className="grid size-10 place-items-center rounded-md bg-project-tile text-small font-semibold text-project-tile-ink" aria-hidden="true">
-          {monogram}
-        </span>
-        {/* Figma fixes this pill at 39×39, which clips "Completed"; sized to content here. */}
-        <Pill tone="success">{project.status}</Pill>
-      </div>
-
-      <h2 className="font-semibold pt-3.75 text-lead text-ink">{project.name}</h2>
-      <p className="pt-1 text-small text-ink-muted">
-        {project.client} · {project.code}
+    <article className={`${CARD} ${projectTint(p.id)}`}>
+      <h2 className="pb-1 text-title font-semibold text-ink">{p.name}</h2>
+      <p className="text-caption text-ink-muted">
+        {p.client} · {p.code}
       </p>
 
-      <dl className="grid grid-cols-2 gap-3 pt-4.5">
-        {facts.map(([term, value]) => (
-          <div key={term}>
-            <dt className="text-caption font-semibold tracking-meta text-ink-dim uppercase">{term}</dt>
-            <dd className="pt-1 text-body text-ink">{value}</dd>
+      <dl className="mt-4.25 grid grid-cols-3 gap-3 border-y border-card-rule py-3.5">
+        {stats.map(([term, value], i) => (
+          <div key={term} className={i ? 'border-l border-card-rule pl-3' : ''}>
+            <dt className={CARD_META}>{term}</dt>
+            <dd className="pt-1.5 text-body font-semibold text-ink">{value}</dd>
           </div>
         ))}
       </dl>
 
-      <ul className="mt-5 flex border-t border-card-rule pt-4" aria-label="Team members">
-        {project.people.map((person) => (
-          <li
-            key={person}
-            title={person}
-            className="-mr-1.5 grid size-8 place-items-center rounded-full border-2 border-member-ring bg-member text-caption font-semibold text-brand transition-transform duration-200 ease-stripe hover:z-10 hover:-translate-y-0.5"
-          >
-            {initials(person)}
-          </li>
-        ))}
-      </ul>
+      <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+        {archived ? (
+          billed && (
+            <Link
+              to={`/invoices?invoice=${billed.invoice.id}`}
+              className="col-span-2 inline-flex h-10 items-center justify-center rounded-sm border border-line bg-surface px-4 text-body font-semibold text-ink shadow-card transition-colors hover:border-brand-200 hover:bg-hover hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              View invoice
+            </Link>
+          )
+        ) : (
+          <>
+            <DarkButton onClick={() => navigate(`/review/${p.id}`)}>Review invoice</DarkButton>
+            <OutlineButton onClick={() => navigate('/time', { state: { intent: { projectId: p.id, mode: 'entries' } satisfies TimeIntent } })}>
+              View entries
+            </OutlineButton>
+          </>
+        )}
+      </div>
+
+      <footer className="mt-3.5 flex items-center justify-between border-t border-card-foot pt-3.25">
+        <div>
+          <small className="block text-caption tracking-meta text-ink-meta-soft">BILLING REVIEWER</small>
+          <b className="block pt-1 text-body font-semibold">{p.reviewer}</b>
+        </div>
+        <div className="flex items-center gap-2.25">
+          <ul className="flex pl-1" aria-label="Team members">
+            {p.people.map((person) => (
+              <li key={person} title={person} className={CARD_AVATAR}>
+                {initials(person)}
+              </li>
+            ))}
+          </ul>
+          <small className="pl-1.25 text-caption text-ink-meta-soft">{p.people.length} team members</small>
+        </div>
+      </footer>
     </article>
   )
 }

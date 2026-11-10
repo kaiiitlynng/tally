@@ -4,7 +4,7 @@ import { DarkButton, DarkLinkButton, OutlineButton } from '../components/Button'
 import { uid, useDemo } from '../components/DemoContext'
 import { Icon } from '../components/Icon'
 import { Disclaimer, Modal } from '../components/Modal'
-import { demoToday, isFinal, openFlagsFor, setFlagStatus, snapshotForReview, type Flag } from '../data/store'
+import { addReply, demoToday, isFinal, openFlagsFor, setFlagStatus, snapshotForReview, type Flag } from '../data/store'
 import { InvoiceDocument } from '../sections/review/InvoiceDocument'
 import { ReviewPanel } from '../sections/review/ReviewPanel'
 import { SendInvoiceModal } from '../sections/review/SendInvoiceModal'
@@ -64,21 +64,33 @@ export default function InvoiceReview() {
   function sendAsk() {
     if (!ask) return
     const entry = entryFor(ask)
+    const body =
+      askText.trim() ||
+      (ask.type === 'Vague description'
+        ? `Could you clarify “${entry.description}”? We need a more specific description before billing.`
+        : `Could you confirm your ${entry.hours}-hour entry on ${entry.date.slice(5)} (“${entry.description}”)? ${ask.title}.`)
     update((s) => {
       setFlagStatus(s, ask.id, 'Awaiting employee')
-      s.messages.unshift({
-        id: uid(),
-        projectId: invoiceId,
-        entryId: entry.id,
-        from: me.name,
-        to: entry.employee,
-        subject: `Clarify ${entry.date.slice(5)} time entry`,
-        body: askText || `Could you clarify “${entry.description}”? We need a more specific description before billing.`,
-        time: 'Just now',
-        unreadBy: ['employee'],
-        status: 'Open',
-        replies: [],
-      })
+      // Follow-ups on the same entry continue its thread, so the conversation stays in one place.
+      const thread = s.messages.find((m) => m.entryId === entry.id)
+      if (thread) {
+        addReply(s, thread.id, { from: me.name, body, time: 'Just now' })
+        thread.status = 'Open'
+        thread.unreadBy = ['employee']
+      } else
+        s.messages.unshift({
+          id: uid(),
+          projectId: invoiceId,
+          entryId: entry.id,
+          from: me.name,
+          to: entry.employee,
+          subject: `Clarify ${entry.date.slice(5)} time entry`,
+          body,
+          time: 'Just now',
+          unreadBy: ['employee'],
+          status: 'Open',
+          replies: [],
+        })
       s.invoiceStatus[invoiceId] = 'Awaiting employee'
       s.audit.unshift(`${me.firstName} asked ${entry.employee} about a linked entry`)
     })
@@ -116,14 +128,13 @@ export default function InvoiceReview() {
     <>
       <Link
         to="/review"
-        className="group -ml-2 inline-flex h-8 items-center gap-1 rounded-sm px-2 text-small font-medium text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand focus-visible:outline-2 focus-visible:outline-accent"
+        className="group -ml-2 inline-flex h-8 items-center gap-1 rounded-sm px-2 text-small font-medium text-ink-muted transition-colors hover:bg-hover hover:text-brand focus-visible:outline-2 focus-visible:outline-accent"
       >
         <span aria-hidden="true" className="transition-transform duration-150 group-hover:-translate-x-0.5">←</span> Ready for Review
       </Link>
       <div className="flex items-end justify-between gap-6 pt-3">
         <div>
-          <p className="text-caption font-semibold tracking-eyebrow text-eyebrow uppercase">Invoice review</p>
-          <h1 className="pt-2 text-title-lg font-semibold tracking-title text-ink">{project.name}</h1>
+          <h1 className="text-title-lg font-semibold tracking-title text-ink">{project.name}</h1>
           <p className="pt-1 text-body text-ink-muted">{project.client} · May 2025</p>
         </div>
         <div className="flex gap-2">
@@ -133,7 +144,7 @@ export default function InvoiceReview() {
               Approve Invoice <Icon name="check-white" size={18} />
             </DarkButton>
           )}
-          {approved && <DarkLinkButton to="/invoices">View in Approved &amp; Sent</DarkLinkButton>}
+          {approved && <DarkLinkButton to="/invoices">View in Approved Invoices</DarkLinkButton>}
         </div>
       </div>
 
@@ -162,21 +173,14 @@ export default function InvoiceReview() {
       </div>
 
       {ask && (
-        <Modal eyebrow="Linked billing request" title="Ask employee" confirmLabel="Send request" onConfirm={sendAsk} onClose={() => setAsk(null)}>
-          <div className="mt-4.5 mb-3 flex gap-2.5 rounded-md bg-context p-3">
-            <Icon name="nav-time-entries" size={18} />
-            <div className="text-small">
-              <b className="block font-semibold">
-                {entryFor(ask).employee} · {entryFor(ask).date}
-              </b>
-              <p className="pt-1 text-ink-muted">{entryFor(ask).description}</p>
-            </div>
-          </div>
+        <Modal title="Ask employee" confirmLabel="Send request" onConfirm={sendAsk} onClose={() => setAsk(null)}>
+          <p className="mb-3 text-small text-ink-muted">
+            To <b className="font-semibold text-ink">{entryFor(ask).employee}</b> · {entryFor(ask).date}
+          </p>
           <label className={LABEL}>
             Message
             <textarea value={askText} onChange={(e) => setAskText(e.target.value)} placeholder="Explain what needs clarification…" className={`${CONTROL} min-h-21.25 resize-y`} />
           </label>
-          <Disclaimer>This sends an in-app message. No external email is delivered in this prototype.</Disclaimer>
         </Modal>
       )}
 
@@ -191,7 +195,7 @@ export default function InvoiceReview() {
       )}
 
       {keep && (
-        <Modal eyebrow="Daily hours" title="Keep as is" confirmLabel="Keep hours" onConfirm={keepAsIs} onClose={() => setKeep(null)}>
+        <Modal title="Keep as is" confirmLabel="Keep hours" onConfirm={keepAsIs} onClose={() => setKeep(null)}>
           <p className="mt-2 text-small text-ink-muted">{keep.title}</p>
           <label className={`${LABEL} mt-4`}>
             Note for the record (optional)

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { DarkButton } from '../components/Button'
 import { useDemo } from '../components/DemoContext'
 import { Icon } from '../components/Icon'
+import { Dialog } from '../components/Modal'
 import { PageTitle } from '../components/PageTitle'
 import { onTabListKeyDown } from '../components/tabKeys'
 import { ColumnMapping } from '../sections/time/ColumnMapping'
@@ -34,7 +35,9 @@ export default function TimeEntries() {
   // Read once: the hand-off is cleared from history below, but the page keeps using it.
   const [intent] = useState(() => (location.state as { intent?: TimeIntent } | null)?.intent)
   const mode: Mode = params.get('mode') === 'import' ? 'import' : 'enter'
-  const [step, setStep] = useState<'drop' | 'parsing' | 'mapping' | 'done'>('drop')
+  // A file dropped on Home arrives with importNow, so the import starts reading it right away.
+  const [importNow] = useState(() => Boolean((location.state as { importNow?: boolean } | null)?.importNow))
+  const [step, setStep] = useState<'drop' | 'parsing' | 'mapping' | 'done'>(importNow ? 'parsing' : 'drop')
   const [formKey, setFormKey] = useState(0)
   const { role, me, toast: setNotice } = useDemo()
   const entriesRef = useRef<HTMLElement>(null)
@@ -60,35 +63,36 @@ export default function TimeEntries() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Drop the Home hand-off from history so a refresh shows the drop zone instead of re-importing.
+  useEffect(() => {
+    if (importNow) navigate({ search: location.search }, { replace: true, state: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function setMode(next: Mode) {
     setStep('drop')
     setParams(next === 'import' ? { mode: 'import' } : {}, { replace: true })
   }
 
+  // Partner: adding time happens in a dialog over "All submitted time" (owner request 2026-11-10). Home's
+  // "Enter hours directly" (?add=enter) and a dropped file (?mode=import) open it straight away.
+  const partner = role === 'partner'
+  const [adding, setAdding] = useState(() => partner && (params.get('add') === 'enter' || params.get('mode') === 'import'))
+  function openAdd(next: Mode) {
+    setMode(next)
+    setFormKey((k) => k + 1)
+    setAdding(true)
+  }
+  function closeAdd(message?: string) {
+    setAdding(false)
+    setStep('drop')
+    setParams({}, { replace: true })
+    if (message) setNotice(message)
+  }
 
-  return (
+  const addTime = (
     <>
-      <PageTitle
-        eyebrow="One shared billing dataset"
-        title={role === 'employee' ? 'My Time' : 'Time Entries'}
-        description="Enter hours in Tally or import Excel. Both follow the same review and invoice process."
-        actions={
-          role === 'partner' && (
-            <DarkButton
-              leadingIcon="plus-white"
-              onClick={() => {
-                setMode('enter')
-                setFormKey((k) => k + 1)
-                requestAnimationFrame(() => document.getElementById('entry-date')?.focus())
-              }}
-            >
-              Enter hours
-            </DarkButton>
-          )
-        }
-      />
-
-      <div role="tablist" aria-label="How to add time" onKeyDown={onTabListKeyDown} className="flex gap-1.5 pt-6">
+      <div role="tablist" aria-label="How to add time" onKeyDown={onTabListKeyDown} className={`flex gap-1.5 ${partner ? '' : 'pt-6'}`}>
         {MODES.map((m) => {
           const active = m.id === mode
           return (
@@ -113,13 +117,62 @@ export default function TimeEntries() {
 
       <div id="time-panel" role="tabpanel" aria-labelledby={`tab-${mode}`} className="pt-3.25">
         {mode === 'enter' && (
-          <TimeEntryForm key={`${me.name}-${formKey}-${intent?.projectId ?? ''}`} initialProjectId={intent?.mode === 'log' ? intent.projectId : undefined} onSaved={setNotice} />
+          <TimeEntryForm
+            key={`${me.name}-${formKey}-${intent?.projectId ?? ''}`}
+            initialProjectId={intent?.mode === 'log' ? intent.projectId : undefined}
+            onSaved={partner ? closeAdd : setNotice}
+          />
         )}
         {mode === 'import' && step === 'drop' && <ImportDropzone onFile={() => setStep('parsing')} />}
         {mode === 'import' && step === 'parsing' && <ParsingState />}
-        {mode === 'import' && (step === 'mapping' || step === 'done') && <ColumnMapping onReupload={() => setStep('drop')} onSubmitted={() => setNotice('Time entry submitted successfully.')} />}
+        {mode === 'import' && (step === 'mapping' || step === 'done') && (
+          <ColumnMapping
+            onReupload={() => setStep('drop')}
+            onSubmitted={() => (partner ? closeAdd('Time entry submitted successfully.') : setNotice('Time entry submitted successfully.'))}
+          />
+        )}
       </div>
+    </>
+  )
 
+  if (partner)
+    return (
+      <>
+        <PageTitle
+          title="Time Entries"
+          description="Enter hours in Tally or import Excel. Both follow the same review and invoice process."
+          actions={
+            <DarkButton leadingIcon="plus-white" onClick={() => openAdd('enter')}>
+              Enter hours
+            </DarkButton>
+          }
+        />
+        <EntriesSection ref={entriesRef} initialProjectFilter={intent?.mode === 'entries' ? intent.projectId : undefined} onNotice={setNotice} />
+        {adding && (
+          <Dialog labelledBy="add-time-title" onClose={() => closeAdd()} className="w-220 rounded-xl p-7">
+            <div className="mb-5 flex items-start justify-between">
+              <h2 id="add-time-title" className="text-title font-semibold tracking-title">
+                Add time
+              </h2>
+              <button
+                type="button"
+                onClick={() => closeAdd()}
+                aria-label="Close"
+                className="-mt-1 -mr-1 rounded-sm p-2 text-ink-muted transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+            {addTime}
+          </Dialog>
+        )}
+      </>
+    )
+
+  return (
+    <>
+      <PageTitle title="My Time" description="Enter hours in Tally or import Excel. Both follow the same review and invoice process." />
+      {addTime}
       <EntriesSection ref={entriesRef} initialProjectFilter={intent?.mode === 'entries' ? intent.projectId : undefined} onNotice={setNotice} />
     </>
   )

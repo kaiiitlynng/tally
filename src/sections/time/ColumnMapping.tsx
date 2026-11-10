@@ -214,7 +214,7 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
 
       {submitted && (
         <div role="status" className="mx-auto mt-6 flex w-full max-w-117.5 items-center gap-3 rounded-lg border border-done-line bg-done-soft px-4.5 py-4 text-done-ink">
-          <span className="grid size-9.5 shrink-0 place-items-center rounded-full bg-success-pill">
+          <span className="grid shrink-0 place-items-center">
             <Icon name="check-green" size={13} />
           </span>
           <div>

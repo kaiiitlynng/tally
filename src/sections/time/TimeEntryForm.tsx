@@ -3,7 +3,7 @@ import { DarkButton, OutlineButton } from '../../components/Button'
 import { useDemo } from '../../components/DemoContext'
 import { SectionHeading } from '../../components/SectionHeading'
 import { useCommitEntry } from '../../hooks/useCommitEntry'
-import { entryWarnings, money, periodDefaultDate, validateEntry, type EntryForm, type EntryWarning, type FormErrors } from '../../data/store'
+import { currentPeriod, entryWarnings, money, periodDefaultDate, validateEntry, type EntryForm, type EntryWarning, type FormErrors } from '../../data/store'
 import { EntryFields, focusFirstError } from './EntryFields'
 import { WarningConfirm } from './WarningConfirm'
 
@@ -14,12 +14,12 @@ const ID = 'entry'
  * ported from the prototype code layer; Figma only shows the empty form.
  */
 export function TimeEntryForm({ initialProjectId, onSaved }: { initialProjectId?: string; onSaved: (message: string) => void }) {
-  const { store, role, me, period } = useDemo()
+  const { store, role, me } = useDemo()
   const commit = useCommitEntry()
   const projects = store.projects.filter((p) => role === 'partner' || p.people.includes(me.name))
 
   const blank = (): EntryForm => ({
-    date: role === 'employee' ? periodDefaultDate(period) : '2025-05-28',
+    date: role === 'employee' ? periodDefaultDate(currentPeriod) : '2025-05-28',
     projectId: initialProjectId ?? projects[0]?.id ?? '',
     hours: '',
     description: '',

@@ -31,11 +31,11 @@ export function NotificationBell() {
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="relative grid size-7.75 place-items-center rounded-full hover:bg-segment focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="relative grid size-7.75 place-items-center rounded-full hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Icon name="bell-dark" size={18} />
         {unread > 0 && (
-          <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent-ink px-1 text-caption font-semibold text-white">
+          <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-notify px-1 text-caption font-semibold text-notify-ink ring-2 ring-white">
             {unread}
           </span>
         )}
@@ -56,9 +56,9 @@ export function NotificationBell() {
                       setOpen(false)
                       navigate(n.to)
                     }}
-                    className={`flex w-full gap-2 rounded-sm p-2 text-left text-caption leading-normal hover:bg-segment focus-visible:outline-2 focus-visible:outline-accent ${n.read ? 'text-ink-muted' : 'text-ink'}`}
+                    className={`flex w-full gap-2 rounded-sm p-2 text-left text-caption leading-normal hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent ${n.read ? 'text-ink-muted' : 'text-ink'}`}
                   >
-                    <span aria-hidden="true" className={`mt-1 size-1.5 shrink-0 rounded-full ${n.read ? 'bg-transparent' : 'bg-accent-ink'}`} />
+                    <span aria-hidden="true" className={`mt-1 size-1.5 shrink-0 rounded-full ${n.read ? 'bg-transparent' : 'bg-notify-ink'}`} />
                     <span>
                       {n.text}
                       {!n.read && <span className="sr-only"> (unread)</span>}

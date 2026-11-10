@@ -49,7 +49,6 @@ export function EditEntryDialog({ entry, onClose, onSaved, onLocked }: { entry: 
   return (
     <Modal
       size="lg"
-      eyebrow="Existing time record"
       title="Edit Time Entry."
       onClose={onClose}
       footer={
@@ -82,10 +81,10 @@ export function EditEntryDialog({ entry, onClose, onSaved, onLocked }: { entry: 
   )
 }
 
-function CenteredDialog({ icon, iconTile, title, children, actions, onClose }: { icon: string; iconTile: string; title: string; children: React.ReactNode; actions: React.ReactNode; onClose: () => void }) {
+function CenteredDialog({ icon, title, children, actions, onClose }: { icon: string; title: string; children: React.ReactNode; actions: React.ReactNode; onClose: () => void }) {
   return (
     <Dialog labelledBy="centered-dialog-title" onClose={onClose} className="w-110 rounded-xl p-8 text-center">
-      <span className={`mx-auto mb-3.25 grid size-11 place-items-center rounded-full ${iconTile}`}>
+      <span className="mx-auto mb-3 grid place-items-center">
         <Icon name={icon} size={18} />
       </span>
       <h2 id="centered-dialog-title" className="mb-1.75 text-title tracking-title font-semibold">
@@ -131,7 +130,6 @@ export function DeleteEntryDialog({ entry, onClose, onDeleted, onLocked }: { ent
   return (
     <CenteredDialog
       icon="close-delete"
-      iconTile="bg-delete-soft"
       title="Delete this time entry?"
       onClose={onClose}
       actions={
@@ -164,7 +162,6 @@ export function LockedEntryDialog({ entry, onClose, onSent }: { entry: Entry; on
   return (
     <CenteredDialog
       icon="invoice-protected"
-      iconTile="bg-protected-soft"
       title="Request a billing correction"
       onClose={onClose}
       actions={

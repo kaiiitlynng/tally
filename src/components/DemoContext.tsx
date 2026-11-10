@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { currentPeriod, initialStore, users, type BillingPeriod, type Role, type Store } from '../data/store'
+import { initialStore, users, type Role, type Store } from '../data/store'
 
 interface DemoState {
   store: Store
@@ -10,9 +10,6 @@ interface DemoState {
   setRole: (role: Role) => void
   /** The signed-in demo user for the current role. */
   me: (typeof users)[Role]
-  /** Billing month selected in the employee "My Time" month picker. */
-  period: BillingPeriod
-  setPeriod: (period: BillingPeriod) => void
   /** Changes on every "Reset demo"; the shell keys pages off it to drop their local state. */
   resetKey: number
   reset: () => void
@@ -28,7 +25,6 @@ const DemoContext = createContext<DemoState | null>(null)
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState(initialStore)
   const [role, setRole] = useState<Role>('partner')
-  const [period, setPeriod] = useState<BillingPeriod>(currentPeriod)
   const [resetKey, setResetKey] = useState(0)
   const [toastMessage, setToastMessage] = useState('')
   const clearToast = useCallback(() => setToastMessage(''), [])
@@ -44,13 +40,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     role,
     setRole,
     me: users[role],
-    period,
-    setPeriod,
     resetKey,
     reset: () => {
       setStore(initialStore())
       setRole('partner')
-      setPeriod(currentPeriod)
       setResetKey((k) => k + 1)
       setToastMessage('')
     },

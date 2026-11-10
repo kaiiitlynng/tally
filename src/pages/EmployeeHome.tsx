@@ -28,7 +28,6 @@ export default function EmployeeHome() {
   return (
     <>
       <PageTitle
-        eyebrow="My May timesheet"
         title={`Good morning, ${me.firstName}.`}
         description="Log your work, respond to billing questions, and submit by June 3."
         actions={onTrack && <Pill tone="success">On track</Pill>}
@@ -65,9 +64,9 @@ export default function EmployeeHome() {
           <Link
             key={q.title}
             to={q.to}
-            className="group grid grid-cols-[40px_1fr] grid-rows-[auto_auto] items-center gap-x-3 gap-y-0.5 rounded-lg border border-line bg-surface p-4 shadow-card card-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="group grid grid-cols-[20px_1fr] grid-rows-[auto_auto] items-center gap-x-3 gap-y-0.5 rounded-lg border border-line bg-surface p-4 shadow-card card-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            <span className="row-span-2 grid size-10 place-items-center rounded-md bg-quick-tile transition-colors duration-200 group-hover:bg-brand-200">
+            <span className="row-span-2 grid place-items-center transition-transform duration-200 ease-stripe group-hover:scale-110">
               <Icon name={q.icon} size={18} />
             </span>
             <b className="text-body font-semibold text-ink">{q.title}</b>

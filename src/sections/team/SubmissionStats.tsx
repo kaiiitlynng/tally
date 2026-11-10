@@ -1,27 +1,20 @@
 import { uid, useDemo } from '../../components/DemoContext'
 import { demoToday } from '../../data/store'
-import { Icon } from '../../components/Icon'
 
 /** Submitted / Due soon / Overdue counters + automatic schedule card (Figma 36:7765). */
 export function SubmissionStats() {
-  const { store, update, toast } = useDemo()
-  const count = (status: string) => String(Object.values(store.submissions).filter((s) => s === status).length).padStart(2, '0')
+  const { store, update, toast, me } = useDemo()
+  // Counts the people the partner reminds: the team, minus the partner.
+  const count = (status: string) => String(store.team.filter((m) => m.name !== me.name && store.submissions[m.name] === status).length).padStart(2, '0')
 
-  const stats = [
-    { label: 'Submitted', icon: 'check-submitted', tile: 'bg-stat-submitted' },
-    { label: 'Due soon', icon: 'clock-due', tile: 'bg-stat-due' },
-    { label: 'Overdue', icon: 'bell-overdue', tile: 'bg-stat-overdue' },
-  ]
+  const stats = ['Submitted', 'Due soon', 'Overdue']
 
   return (
     <div className="grid grid-cols-[150px_150px_150px_1fr] gap-2.5 pt-6">
-      {stats.map((s) => (
-        <div key={s.label} className="grid grid-cols-[35px_1fr] grid-rows-[46px_22px] rounded-lg border border-line bg-surface shadow-card p-4">
-          <span className={`row-span-2 grid size-8 place-items-center self-center rounded-md ${s.tile}`}>
-            <Icon name={s.icon} size={18} />
-          </span>
-          <b className="self-center font-display text-title font-bold tracking-stat-sm text-ink">{count(s.label)}</b>
-          <span className="self-center text-caption text-ink">{s.label}</span>
+      {stats.map((label) => (
+        <div key={label} className="flex flex-col justify-center gap-1 rounded-lg border border-line bg-surface p-4 shadow-card">
+          <b className="font-display text-title font-bold tracking-stat-sm text-ink">{count(label)}</b>
+          <span className="text-caption text-ink">{label}</span>
         </div>
       ))}
       <div className="rounded-lg border border-line bg-surface shadow-card px-4 pt-5 pb-4">

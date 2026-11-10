@@ -79,6 +79,8 @@ export interface Flag {
   why: string
   suggestion: string
   impact: number
+  /** The concrete before/after Tally proposes, when there is one (shown as a comparison in the review panel). */
+  change?: { field: string; from: string; to: string }
   status: FlagStatus
   /** "daily" flags are derived from the daily-hours threshold; they are not stored. */
   kind?: 'daily'
@@ -102,8 +104,16 @@ export interface Message {
 export type InvoiceStatus = 'Draft' | 'In review' | 'Awaiting employee' | 'Ready to approve' | 'Approved' | 'Exported' | 'Sent'
 export type Submission = 'Submitted' | 'Due soon' | 'Overdue'
 
+export interface TeamMember {
+  name: string
+  email: string
+  role: 'Partner' | 'Employee'
+}
+
 export interface Store {
   projects: Project[]
+  /** Firm members with Tally access (Settings → Team). Removing someone keeps their entries and rate history. */
+  team: TeamMember[]
   entries: Entry[]
   flags: Flag[]
   messages: Message[]
@@ -129,7 +139,7 @@ export interface Store {
 }
 
 export const firm = 'Hartwell & Knox Forensic Advisory'
-export const partner = { name: 'Vanessa Hart', firstName: 'Vanessa', initials: 'VH', role: 'Partner / Billing manager' }
+export const partner = { name: 'Vanessa Hart', firstName: 'Vanessa', initials: 'VH', role: 'Partner' }
 export const employee = { name: 'Nora Chen', firstName: 'Nora', initials: 'NC', role: 'Team member' }
 export const users = { partner, employee } as const
 
@@ -146,6 +156,11 @@ export interface BillingPeriod {
 export const currentPeriod: BillingPeriod = { year: 2025, month: 5 }
 export const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 export const periodLabel = ({ year, month }: BillingPeriod) => `${monthNames[month - 1]} ${year}`
+/** "May 1–31, 2025" (or "May 1–31" without the year), with the month's real last day. */
+export const periodRange = ({ year, month }: BillingPeriod, withYear = true) => {
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  return `${monthNames[month - 1]} 1–${last}${withYear ? `, ${year}` : ''}`
+}
 export const periodDefaultDate = ({ year, month }: BillingPeriod) =>
   `${year}-${String(month).padStart(2, '0')}-${year === 2025 && month === 5 ? '28' : '01'}`
 export const entryIsInPeriod = (date: string, { year, month }: BillingPeriod) =>
@@ -213,7 +228,8 @@ const e = (
 // Spreadsheet rows are synthetic demo references (spec item 9 example: "Ryan_May.xlsx, row 14").
 const entries: Entry[] = [
   e('e1', '2025-05-14', 'Nora Chen', 'montrose', 1.2, 620, 'Prepared client strategy schedules', 'Excel', 'Nora_May_part1.xlsx, row 6'),
-  e('e2', '2025-05-16', 'Ryan Cole', 'montrose', 20, 465, 'Emails and follow up', 'Excel', 'Ryan_May.xlsx, row 14'),
+  // e2 is Nora's (owner request 2026-11-10) so every review question reaches the employee-view user and can be answered there.
+  e('e2', '2025-05-16', 'Nora Chen', 'montrose', 20, 620, 'Emails and follow up', 'Excel', 'Nora_May_part1.xlsx, row 9'),
   e('e3', '2025-05-18', 'Ryan Cole', 'montrose', 0.8, 465, 'Reconciled revenue schedule', 'Excel', 'Ryan_May.xlsx, row 16'),
   e('e4', '2025-05-21', 'Nora Chen', 'montrose', 8.5, 620, 'Drafting', 'Direct'),
   e('e5', '2025-05-22', 'Vanessa Hart', 'montrose', 4.2, 850, 'Reviewed damages model and methodology', 'Direct'),
@@ -227,10 +243,11 @@ const flags: Flag[] = [
     entryId: 'e2',
     type: 'Unusually high hours',
     title: '20 hours may be a decimal error',
-    noticed: 'Ryan recorded 20.0 hours on May 16; his next-highest day is 6.6 hours.',
+    noticed: 'Nora recorded 20.0 hours on May 16; the next-highest day on Nora\'s timesheet is 9.3 hours.',
     why: 'A mistyped decimal would materially overstate the client invoice.',
     suggestion: 'Change 20.0 hours to 2.0 hours',
-    impact: -8370,
+    change: { field: 'Hours', from: '20.0', to: '2.0' },
+    impact: -11160,
     status: 'Open',
   },
   {
@@ -249,6 +266,7 @@ const flags: Flag[] = [
 export function initialStore(): Store {
   return structuredClone({
     projects,
+    team: people.map((name) => ({ name, email: `${name.toLowerCase().replace(' ', '.')}@hartwellknox.example`, role: name === partner.name ? 'Partner' : 'Employee' })),
     entries,
     flags,
     messages: [],
@@ -310,7 +328,7 @@ export const initials = (name: string) =>
 
 export const isOpen = (f: Flag) => f.status !== 'Resolved' && f.status !== 'Dismissed'
 
-const shortDate = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+export const shortDate = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
 
 /**
  * Daily-hours flags (spec item 5): any person-day whose total across all projects exceeds the threshold.
@@ -440,6 +458,18 @@ export function entryFromRow(s: Store, row: { date: string; hours: number; descr
   }
 }
 
+
+/**
+ * Add a reply and move the thread to the top: s.messages is kept newest-activity first (new threads are
+ * unshifted), so the inbox lists conversations by their latest message. Call inside update().
+ */
+export function addReply(s: Store, messageId: string, reply: Message['replies'][number]) {
+  const i = s.messages.findIndex((m) => m.id === messageId)
+  const [m] = s.messages.splice(i, 1)
+  m.replies.push(reply)
+  s.messages.unshift(m)
+  return m
+}
 
 export const projectName = (s: Store, projectId: string) => s.projects.find((p) => p.id === projectId)?.name ?? 'Unknown project'
 
