@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+@layer base {
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+    /* Figma pins DM Sans' optical size at 14 for every text layer. */
+    font-variation-settings: "opsz" 14;
+  }
+}

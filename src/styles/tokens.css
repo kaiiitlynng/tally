@@ -1,0 +1,268 @@
+/*
+ * Design tokens — the only place raw values live.
+ * The Figma file defines no variables (get_variable_defs on 37:15126 children returns {}),
+ * so these are extracted from the raw values used in frame 37:15126 and named by role.
+ * Type/radius tokens are named by their px size so they map 1:1 to Figma values.
+ */
+@theme {
+  /* ---------- Fonts ---------- */
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Doto", ui-monospace, monospace; /* dot-matrix numerals on stat counters */
+
+  /* ---------- Surfaces ---------- */
+  --color-canvas: #f3f0e9; /* page background */
+  --color-header: rgb(248 246 241 / 0.7); /* translucent top bar */
+  --color-sidebar: rgb(247 245 239 / 0.88);
+  --color-surface: rgb(255 255 255 / 0.66); /* cards, tables, workflow */
+  --color-surface-muted: #ece7de; /* prototype notice card */
+  --color-segment: #ebe7df; /* segmented-control track */
+  --color-step-idle: #f9f7f2;
+  --color-white: #ffffff;
+  --color-surface-soft: rgb(255 255 255 / 0.49); /* inactive mode tab */
+  --color-toggle: #f0ece5; /* Billable / Nonbillable track */
+  --color-table-head: #efebe4; /* column-mapping table header */
+  --color-dropzone: #fbf8f3;
+  --color-dropzone-tile: #f2ddcd;
+
+  /* ---------- Lines ---------- */
+  --color-line: #ddd8cf; /* default 1px border */
+  --color-line-header: #dbd5cb;
+  --color-line-sidebar: #d9d3c8;
+  --color-line-row: #e5e0d8; /* table / list dividers */
+  --color-line-track: #d9d3ca; /* workflow connector */
+  --color-line-step: #d8d2c9;
+  --color-line-stat: rgb(106 75 55 / 0.14);
+  --color-line-field: #d9d3ca; /* inputs (same value as line-track) */
+  --color-line-footer: #e3ddd5; /* form footer divider */
+  --color-line-mapping: #e4dfd7;
+  --color-line-dashed: #bcb4a8; /* drop zone */
+
+  /* ---------- Text ---------- */
+  --color-ink: #1e1d1a; /* primary text */
+  --color-ink-muted: #77736c; /* secondary text */
+  --color-ink-nav: #6f6b64; /* inactive nav */
+  --color-ink-label: #99938b; /* sidebar group labels */
+  --color-ink-th: #969088; /* table column headers */
+  --color-ink-dim: #999999; /* completed / upcoming steps */
+  --color-ink-segment: #777777; /* inactive segmented option */
+  --color-ink-subtle: #69645d; /* outline button text */
+  --color-ink-divider: #bbbbbb; /* breadcrumb slash */
+  --color-ink-neutral: #666666; /* neutral pill text */
+  --color-ink-field: #716b64; /* form labels, toggle text */
+  --color-ink-placeholder: rgb(30 29 26 / 0.5);
+  --color-ink-source: #82776f; /* "Excel import" / "Direct entry" */
+
+  /* ---------- Brand / accent (warm clay) ---------- */
+  --color-dark: #252522; /* primary button, active nav, current step */
+  --color-eyebrow: #9a7561;
+  --color-accent-soft: #f9dfcc; /* accent pill background */
+  --color-accent-ink: #9a572f; /* accent pill text */
+  --color-accent-tile: #f4ddcc; /* icon tile behind upload / clock */
+  --color-warn-tile: #f6dfcf; /* icon tile behind overdue clock */
+  --color-link: #604c40; /* "Open →" row action */
+  --color-link-soft: #85644f; /* "View how Tally worked" */
+  --color-avatar: #eab390;
+  --color-avatar-ink: #4d2e1c;
+
+  /* Hero ("Your next step") */
+  --color-hero-line: #ddc3b0;
+  --color-hero-ink: #76685f;
+  --color-hero-stat-ink: #7b6b60;
+
+  /* Warning callout ("Confirm uncertain project match") */
+  --color-warn-soft: #fff1e6;
+  --color-warn-line: #e6b893;
+  --color-warn-ink: #985c37;
+  --color-warn-body: #806c5f;
+  --color-warn-button-line: #d9a580;
+
+  /* Invoice review (Figma 36:6436) */
+  --color-review-frame: #dcd7cf;
+  --color-review-frame-line: #d4cdc3;
+  --color-paper: #fffefa; /* invoice document */
+  --color-doc-rule: #2a2926; /* document header rule */
+  --color-doc-mark: #333333; /* H/K slash + footer rule */
+  --color-doc-line: #eeeeee; /* meta list dividers */
+  --color-doc-head: #f4f0ea; /* line-item header */
+  --color-doc-row: #e9e5df; /* line-item dividers */
+  --color-highlight: #fff0e4; /* flagged line */
+  --color-highlight-line: #e6a577;
+  --color-panel: #f8f5ef; /* "Review with Tally" */
+  --color-panel-line: #ccc5bb;
+  --color-flag-type: #9d5e37;
+  --color-note: #ebe7e0; /* "What Tally noticed" boxes */
+  --color-suggest: #fff0e5;
+  --color-suggest-line: #e4a679;
+  --color-suggest-label: #a05b34;
+  --color-impact: #9a4d29;
+
+  /* Empty states, Messages (Figma 36:7446) and invoice library (code layer) */
+  --color-ink-empty: #888888;
+  --color-inbox: rgb(255 255 255 / 0.61);
+  --color-thread-list: #f3efe8;
+  --color-thread-line: #e1dbd2;
+  --color-thread-active: #fffaf4;
+  --color-conversation: #fcfaf6;
+  --color-bubble: #eee9e1;
+  --color-bubble-mine: #f4daca;
+  --color-linked-body: #f1ede6;
+  --color-foot-ink: #54715a;
+  --color-library: #ddd8d0;
+  --color-library-aside: #f6f2ec;
+
+  /* Team & Reminders (Figma 36:7745) */
+  --color-stat-submitted: #dfebdf;
+  --color-stat-due: #fae2d0;
+  --color-stat-overdue: #f2d9d3;
+  --color-teammate: #ead6c8; /* team table avatars */
+  --color-danger-soft: #f2d8d2; /* "Overdue" pill */
+  --color-danger-ink: #994a3e;
+  --color-live-ring: #f9decf; /* newest activity dot ring (dot = orange) */
+  --color-log-dot: #879689;
+  --color-switch-on: #69846d;
+  --color-switch-off: #d4cec5;
+
+  /* Settings (Figma 36:9819) */
+  --color-surface-faint: rgb(255 255 255 / 0.55); /* settings tab list */
+  --color-privacy: #f7f3ed; /* Data & privacy cards */
+  --color-human: #e2ece1; /* "Human approval is required" (code layer) */
+
+  /* States not drawn in Figma — values from the prototype code layer (36:3, v2.css) */
+  --color-orange: #ff7b31; /* spinner head */
+  --color-spinner-track: #eed6c4;
+  --color-done-soft: #f1f7ef; /* "Timesheet submitted" card */
+  --color-done-line: #c9dac9;
+  --color-done-ink: #527159;
+  --color-banner: #e3ede1; /* success banner */
+  --color-banner-ink: #4d6e54;
+  --color-modal: #faf8f3;
+  --color-scrim: rgb(30 29 26 / 0.4);
+  --color-context: #eee9e2; /* linked entry box in modals */
+  --color-waiting: #f5e2d4;
+  --color-waiting-ink: #9c603b;
+  --color-activity-ink: #657a68; /* "View Tally activity" lines */
+
+  /* Neutral pill */
+  --color-neutral-soft: #ede9e2;
+
+  /* Success (sage) */
+  --color-success-soft: #dfe9df; /* completed step fill */
+  --color-success-tile: #dee9df; /* icon tile behind review doc */
+  --color-success-line: #c8d9c8;
+  --color-success-dot: #6d9272;
+  --color-success-ring: #dbe6d9;
+  --color-success-pill: #dfeadf; /* "Active" / "Completed" project status */
+  --color-success-ink: #4f7056;
+
+  /* Project cards */
+  --color-project-tile: #efded2; /* client monogram tile */
+  --color-project-tile-ink: #815b43;
+  --color-member: #ead0bd; /* stacked team avatars */
+  --color-member-ring: #faf8f3;
+
+  /* ---------- Type scale (px name → size / line-height from Figma) ---------- */
+  --text-6: 6px; /* invoice document micro labels */
+  --text-6--line-height: 9px;
+  --text-7: 7px;
+  --text-7--line-height: 10.5px;
+  --text-8: 8px;
+  --text-8--line-height: 12px;
+  --text-9: 9px;
+  --text-9--line-height: 13.5px;
+  --text-10: 10px;
+  --text-10--line-height: 15px;
+  --text-11: 11px;
+  --text-11--line-height: 16.5px;
+  --text-12: 12px;
+  --text-12--line-height: 18px;
+  --text-13: 13px;
+  --text-13--line-height: 19.5px;
+  --text-14: 14px;
+  --text-14--line-height: 21px;
+  --text-15: 15px;
+  --text-15--line-height: 22.5px;
+  --text-19: 19px;
+  --text-19--line-height: 28.5px;
+  --text-18: 18px;
+  --text-18--line-height: 27px;
+  --text-21: 21px;
+  --text-21--line-height: 31.5px;
+  --text-23: 23px; /* modal titles (prototype code layer) */
+  --text-23--line-height: 34.5px;
+  --text-24: 24px;
+  --text-24--line-height: 36px;
+  --text-26: 26px;
+  --text-26--line-height: 39px;
+  --text-28: 28px;
+  --text-28--line-height: 42px;
+  --text-30: 30px;
+  --text-30--line-height: 45px;
+  --text-32: 32px;
+  --text-32--line-height: 35.2px;
+
+  /* ---------- Letter spacing ---------- */
+  --tracking-display: -1.4px; /* h1 */
+  --tracking-title: -1px; /* hero h2, logo */
+  --tracking-stat: -1.5px; /* Doto counters */
+  --tracking-stat-sm: -1.2px; /* 24px Doto counters */
+  --tracking-eyebrow: 1.17px;
+  --tracking-group: 1.2px; /* sidebar group labels */
+  --tracking-th: 0.56px; /* table headers */
+  --tracking-doc-th: 0.48px; /* invoice line headers */
+  --tracking-doc-firm: 1.08px; /* "FORENSIC ADVISORY" */
+  --tracking-flag: -0.5px; /* flag title */
+
+  /* ---------- Line heights (one-off Figma values) ---------- */
+  --leading-invoice: 11.2px; /* 8px invoice lines */
+  --leading-address: 12.8px;
+  --leading-flag: 13.95px; /* 9px flag body copy */
+
+  /* ---------- Radii ---------- */
+  --radius-7: 7px;
+  --radius-8: 8px;
+  --radius-9: 9px;
+  --radius-10: 10px;
+  --radius-11: 11px;
+  --radius-12: 12px;
+  --radius-13: 13px;
+  --radius-14: 14px;
+  --radius-15: 15px;
+  --radius-16: 16px;
+  --radius-17: 17px;
+  --radius-18: 18px;
+  --radius-20: 20px;
+  --radius-22: 22px;
+
+  /* ---------- Effects ---------- */
+  --drop-shadow-segment: 0 1px 2.5px rgb(0 0 0 / 0.07);
+  --drop-shadow-toggle: 0 1px 2px rgb(0 0 0 / 0.07);
+  --drop-shadow-hero: 0 13px 17.5px rgb(96 60 35 / 0.08);
+  --shadow-doc: 0 10px 30px rgb(51 43 35 / 0.11);
+  --shadow-modal: 0 25px 70px rgb(0 0 0 / 0.2);
+  --blur-scrim: 3px;
+  --blur-header: 12px;
+  --blur-sidebar: 18px;
+
+  /* ---------- Layout ---------- */
+  --spacing-sidebar: 225px;
+  --spacing-header: 62px;
+  --spacing-aside: 300px; /* right-hand "Needs attention" column */
+  --container-content: 1600px; /* max width of the page body */
+  --container-app-min: 1100px; /* desktop-only: app min width (from Figma Shell min-w) */
+}
+
+/* Shell background: canvas + soft peach glow near the top-right (Figma Shell fill). */
+@utility bg-shell {
+  background-color: var(--color-canvas);
+  background-image: radial-gradient(
+    circle 1413px at 75% 43px,
+    rgb(255 185 135 / 0.25) 0%,
+    rgb(255 185 135 / 0) 23%
+  );
+  background-repeat: no-repeat;
+}
+
+/* "Your next step" hero card gradient. */
+@utility bg-hero {
+  background-image: linear-gradient(140.73deg, #edccb6 7.74%, #f6decf 54.23%, #f8e9dc 92.27%);
+}
