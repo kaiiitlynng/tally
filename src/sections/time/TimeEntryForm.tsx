@@ -1,102 +1,106 @@
-import { useState, type FormEvent, type Ref } from 'react'
+import { useState } from 'react'
 import { DarkButton, OutlineButton } from '../../components/Button'
-import { Field, Select, SegmentedRadio, TextArea, TextInput } from '../../components/Field'
+import { useDemo } from '../../components/DemoContext'
 import { SectionHeading } from '../../components/SectionHeading'
-import { uid, useDemo } from '../../components/DemoContext'
-import { money, partner, type Entry } from '../../data/store'
+import { useCommitEntry } from '../../hooks/useCommitEntry'
+import { entryWarnings, money, periodDefaultDate, validateEntry, type EntryForm, type EntryWarning, type FormErrors } from '../../data/store'
+import { EntryFields, focusFirstError } from './EntryFields'
+import { WarningConfirm } from './WarningConfirm'
 
-const TREATMENTS = ['Billable', 'Nonbillable'] as const
+const ID = 'entry'
 
-/** "New time entry" form (Figma 36:1314). */
-export function TimeEntryForm({ dateRef }: { dateRef?: Ref<HTMLInputElement> }) {
-  const { store, update } = useDemo()
-  const { projects } = store
-  const rate = store.rates[partner.name]
-  const [date, setDate] = useState('')
-  const [projectId, setProjectId] = useState(projects[0].id)
-  const [hours, setHours] = useState('')
-  const [treatment, setTreatment] = useState<(typeof TREATMENTS)[number]>('Billable')
-  const [description, setDescription] = useState('')
+/**
+ * "New time entry" (Figma 36:1314 partner, 36:12790 employee). Validation and soft warnings are
+ * ported from the prototype code layer; Figma only shows the empty form.
+ */
+export function TimeEntryForm({ initialProjectId, onSaved }: { initialProjectId?: string; onSaved: (message: string) => void }) {
+  const { store, role, me, period } = useDemo()
+  const commit = useCommitEntry()
+  const projects = store.projects.filter((p) => role === 'partner' || p.people.includes(me.name))
 
-  function save(status: Entry['status']) {
-    update((s) => {
-      s.entries.push({
-        id: uid(),
-        date,
-        employee: partner.name,
-        projectId,
-        hours: Number(hours),
-        rate,
-        description,
-        billable: treatment === 'Billable',
-        status,
-        source: 'Direct',
-      })
-      s.audit.unshift(`${partner.name} ${status === 'Submitted' ? 'submitted' : 'saved'} a direct time entry`)
-    })
-    setDate('')
-    setHours('')
-    setDescription('')
+  const blank = (): EntryForm => ({
+    date: role === 'employee' ? periodDefaultDate(period) : '2025-05-28',
+    projectId: initialProjectId ?? projects[0]?.id ?? '',
+    hours: '',
+    description: '',
+    billable: true,
+  })
+
+  const [form, setForm] = useState<EntryForm>(blank)
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [warnings, setWarnings] = useState<EntryWarning[]>([])
+  const [pendingSubmit, setPendingSubmit] = useState(false)
+
+  function finish(submit: boolean, acknowledged: EntryWarning[]) {
+    commit(form, submit, acknowledged)
+    onSaved(submit ? 'Time entry submitted successfully.' : 'Draft saved. You can finish it later.')
+    setForm(blank())
+    setErrors({})
+    setWarnings([])
   }
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
-    save(submitter?.value === 'draft' ? 'Draft' : 'Submitted')
+  function save(submit: boolean) {
+    const next = validateEntry(form)
+    setErrors(next)
+    if (Object.keys(next).length) {
+      setWarnings([])
+      focusFirstError(ID, next)
+      return
+    }
+    const w = entryWarnings(form, store.entries, me.name, store.threshold)
+    if (w.length) {
+      setWarnings(w)
+      setPendingSubmit(submit)
+      return
+    }
+    finish(submit, [])
   }
 
   return (
-    <form onSubmit={onSubmit} aria-labelledby="new-entry" className="rounded-16 border border-line bg-surface p-5">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+        save(submitter?.value !== 'draft')
+      }}
+      aria-labelledby="new-entry"
+      className="rounded-16 border border-line bg-surface p-5"
+    >
       <SectionHeading id="new-entry" title="New time entry" description="Choose from assigned projects to keep names consistent." />
-
-      <div className="grid grid-cols-2 gap-3.5 pt-2.5">
-        <Field label="Date" htmlFor="entry-date">
-          <TextInput id="entry-date" ref={dateRef} type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
-        </Field>
-        <Field label="Project" htmlFor="entry-project">
-          <Select id="entry-project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Hours worked" htmlFor="entry-hours">
-          <TextInput
-            id="entry-hours"
-            type="number"
-            inputMode="decimal"
-            min="0.1"
-            max="24"
-            step="0.1"
-            required
-            placeholder="0.0"
-            value={hours}
-            onChange={(e) => setHours(e.target.value)}
-          />
-        </Field>
-        <div className="flex flex-col gap-1.5">
-          <span id="entry-treatment" className="text-8 font-semibold text-ink-field">
-            Billing treatment
-          </span>
-          <SegmentedRadio name="treatment" options={TREATMENTS} value={treatment} onChange={setTreatment} labelledBy="entry-treatment" />
-        </div>
-        <Field label="Task description" htmlFor="entry-description" className="col-span-2">
-          <TextArea
-            id="entry-description"
-            required
-            placeholder="What did you work on? Be specific enough for the client."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </Field>
+      <div className="pt-2.5">
+        <EntryFields
+          idPrefix={ID}
+          form={form}
+          projects={projects}
+          errors={errors}
+          warnings={warnings}
+          onChange={(patch, field) => {
+            setForm((f) => ({ ...f, ...patch }))
+            if (field) setErrors((e) => ({ ...e, [field]: undefined }))
+            if (field === 'hours' || field === 'description') setWarnings([])
+          }}
+        />
       </div>
+
+      {warnings.length > 0 && (
+        <WarningConfirm title="Want to double-check this entry?">
+          <OutlineButton
+            onClick={() => {
+              setWarnings([])
+              document.getElementById(`${ID}-description`)?.focus()
+            }}
+          >
+            Edit entry
+          </OutlineButton>
+          <DarkButton onClick={() => finish(pendingSubmit, warnings)}>Confirm it’s correct</DarkButton>
+        </WarningConfirm>
+      )}
 
       <div className="pt-4">
         <div className="flex items-center gap-2 border-t border-line-footer pt-3.5">
           <p className="flex-1 text-8 text-ink-muted">
-            Rate applied by work date: <b className="font-bold">{money(rate)}/hr</b>
+            Rate applied by work date: <b className="font-bold">{money(store.rates[me.name])}/hr</b>
           </p>
           <OutlineButton type="submit" value="draft">
             Save draft

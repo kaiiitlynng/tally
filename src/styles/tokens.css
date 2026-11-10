@@ -127,6 +127,52 @@
   --color-privacy: #f7f3ed; /* Data & privacy cards */
   --color-human: #e2ece1; /* "Human approval is required" (code layer) */
 
+  /* Employee view (Figma 36:11446, 36:11839, 36:12765) */
+  --color-hero-employee-from: #efd0bb;
+  --color-hero-employee-to: #f8e4d5;
+  --color-ring-line: #cda98f; /* "04 days left" ring */
+  --color-ring: rgb(255 255 255 / 0.25);
+  --color-quick-tile: #f0e4d9;
+  --color-mini-tile: #eedbcf;
+  --color-tint-montrose: #ece9f2; /* project card tints (code layer projectTint) */
+  --color-tint-aster: #e7edf2;
+  --color-tint-a: #e8eaf2;
+  --color-tint-b: #eeece8;
+  --color-tint-c: #e9e7ee;
+  --color-tint-d: #e6ebef;
+  --color-card-rule: #ded9d2;
+  --color-card-foot: #e5dfd7;
+  --color-ink-meta: #8c857e; /* "SUBMISSION STATUS" labels */
+  --color-ink-meta-soft: #999189;
+  --color-ink-tab: #77716a; /* inactive project tab */
+
+  /* Forms, toolbar, menus, dialogs (prototype code layer v2.css) */
+  --color-error-line: #bf7468;
+  --color-error-soft: #fff8f6;
+  --color-error-ink: #9b4f45;
+  --color-caution-ink: #956139;
+  --color-confirm-soft: #fff2e6;
+  --color-confirm-line: #dfb487;
+  --color-confirm-ink: #855638;
+  --color-confirm-body: #896f5e;
+  --color-tool-ink: #837d75;
+  --color-tool-active: #775c4a;
+  --color-chip: #f2ede6;
+  --color-chip-ink: #6f665f;
+  --color-filter-panel: #f0ebe4;
+  --color-filter-label: #777169;
+  --color-menu: #fffefa;
+  --color-delete: #934d43;
+  --color-delete-soft: #f1ddd7;
+  --color-protected-soft: #f4dfcf;
+  --color-reply: #f5f1eb;
+  --color-drawer-row: #e6e0d8;
+  --color-reviewer-ink: #6a826c;
+  --color-step-track: #ded8cf;
+  --color-rate-note: #e4ece2;
+  --color-deadline-urgent: #9a5b36;
+  --color-deadline-overdue: #9a4d43;
+
   /* States not drawn in Figma — values from the prototype code layer (36:3, v2.css) */
   --color-orange: #ff7b31; /* spinner head */
   --color-spinner-track: #eed6c4;
@@ -137,6 +183,7 @@
   --color-banner-ink: #4d6e54;
   --color-modal: #faf8f3;
   --color-scrim: rgb(30 29 26 / 0.4);
+  --color-scrim-light: rgb(30 29 26 / 0.3); /* project drawer */
   --color-context: #eee9e2; /* linked entry box in modals */
   --color-waiting: #f5e2d4;
   --color-waiting-ink: #9c603b;
@@ -183,10 +230,14 @@
   --text-15--line-height: 22.5px;
   --text-19: 19px;
   --text-19--line-height: 28.5px;
+  --text-17: 17px;
+  --text-17--line-height: 19.55px;
   --text-18: 18px;
   --text-18--line-height: 27px;
   --text-21: 21px;
   --text-21--line-height: 31.5px;
+  --text-22: 22px;
+  --text-22--line-height: 25.96px;
   --text-23: 23px; /* modal titles (prototype code layer) */
   --text-23--line-height: 34.5px;
   --text-24: 24px;
@@ -197,6 +248,8 @@
   --text-28--line-height: 42px;
   --text-30: 30px;
   --text-30--line-height: 45px;
+  --text-31: 31px;
+  --text-31--line-height: 46.5px;
   --text-32: 32px;
   --text-32--line-height: 35.2px;
 
@@ -205,6 +258,8 @@
   --tracking-title: -1px; /* hero h2, logo */
   --tracking-stat: -1.5px; /* Doto counters */
   --tracking-stat-sm: -1.2px; /* 24px Doto counters */
+  --tracking-stat-ring: -1.55px; /* 31px Doto "days left" */
+  --tracking-meta: 0.49px; /* card meta labels */
   --tracking-eyebrow: 1.17px;
   --tracking-group: 1.2px; /* sidebar group labels */
   --tracking-th: 0.56px; /* table headers */
@@ -237,6 +292,10 @@
   --drop-shadow-segment: 0 1px 2.5px rgb(0 0 0 / 0.07);
   --drop-shadow-toggle: 0 1px 2px rgb(0 0 0 / 0.07);
   --drop-shadow-hero: 0 13px 17.5px rgb(96 60 35 / 0.08);
+  --shadow-popover: 0 16px 38px rgb(48 40 32 / 0.14); /* menus & popovers (code layer) */
+  --shadow-menu: 0 10px 25px rgb(51 42 34 / 0.12);
+  --shadow-drawer: -18px 0 45px rgb(49 40 33 / 0.14);
+  --shadow-toast: 0 10px 28px rgb(48 42 35 / 0.12);
   --shadow-doc: 0 10px 30px rgb(51 43 35 / 0.11);
   --shadow-modal: 0 25px 70px rgb(0 0 0 / 0.2);
   --blur-scrim: 3px;
@@ -260,6 +319,11 @@
     rgb(255 185 135 / 0) 23%
   );
   background-repeat: no-repeat;
+}
+
+/* Employee "Your time is almost ready" hero (Figma 36:11463). */
+@utility bg-hero-employee {
+  background-image: linear-gradient(140.73deg, var(--color-hero-employee-from) 7.74%, var(--color-hero-employee-to) 92.27%);
 }
 
 /* "Your next step" hero card gradient. */

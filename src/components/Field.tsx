@@ -1,17 +1,46 @@
-import type { ComponentProps, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Icon } from './Icon'
 
 const CONTROL =
-  'w-full rounded-10 border border-line-field bg-white text-10 font-semibold text-ink placeholder:text-ink-placeholder focus:border-ink-field focus:outline-2 focus:outline-offset-1 focus:outline-dark/20'
+  'w-full rounded-10 border border-line-field bg-white text-10 font-semibold text-ink placeholder:text-ink-placeholder focus:border-ink-field focus:outline-2 focus:outline-offset-1 focus:outline-dark/20 aria-invalid:border-error-line aria-invalid:bg-error-soft'
 
-/** Label + control stack (Figma "Label", e.g. 36:1325). */
-export function Field({ label, htmlFor, children, className }: { label: string; htmlFor?: string; children: ReactNode; className?: string }) {
+/** Error / caution line under a field (prototype code layer .field-error / .field-warning). */
+export function FieldMessage({ tone, id, children }: { tone: 'error' | 'caution'; id?: string; children: ReactNode }) {
+  return (
+    <span id={id} role={tone === 'error' ? 'alert' : undefined} className={`flex items-start gap-1.5 text-8 leading-[1.4] font-medium ${tone === 'error' ? 'text-error-ink' : 'text-caution-ink'}`}>
+      <Icon name={tone === 'error' ? 'warning-error' : 'warning-caution'} size={13} className="mt-px" />
+      {children}
+    </span>
+  )
+}
+
+interface FieldProps {
+  label: string
+  htmlFor?: string
+  children: ReactNode
+  className?: string
+  error?: string
+  warnings?: string[]
+}
+
+/** Label + control stack (Figma "Label", e.g. 36:1325) with optional validation messages. */
+export function Field({ label, htmlFor, children, className, error, warnings = [] }: FieldProps) {
   return (
     <div className={`flex flex-col gap-1.5 ${className ?? ''}`}>
       <label htmlFor={htmlFor} className="text-8 font-semibold text-ink-field">
         {label}
       </label>
       {children}
+      {error && (
+        <FieldMessage tone="error" id={htmlFor ? `${htmlFor}-error` : undefined}>
+          {error}
+        </FieldMessage>
+      )}
+      {warnings.map((w) => (
+        <FieldMessage key={w} tone="caution">
+          {w}
+        </FieldMessage>
+      ))}
     </div>
   )
 }
@@ -20,14 +49,14 @@ export function TextInput(props: ComponentProps<'input'>) {
   return <input {...props} className={`h-9.75 px-2.75 ${CONTROL} ${props.className ?? ''}`} />
 }
 
-export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function TextArea(props: ComponentProps<'textarea'>) {
   return <textarea {...props} className={`h-21.25 min-h-21.25 resize-y p-2.75 leading-[15px] ${CONTROL} ${props.className ?? ''}`} />
 }
 
-/** Native select styled as the Figma dropdown (36:1331), with the exported chevron. */
-export function Select({ children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+/** Native select styled as the Figma dropdown (36:1331), with the exported chevron. 37.5px in Figma → 38px. */
+export function Select({ children, className, ...props }: ComponentProps<'select'>) {
   return (
-    <div className="relative">
+    <div className={`relative ${className ?? ''}`}>
       <select {...props} className={`h-9.5 appearance-none pr-8 pl-3.75 ${CONTROL}`}>
         {children}
       </select>

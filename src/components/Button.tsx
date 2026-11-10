@@ -30,13 +30,14 @@ export function DarkLinkButton({ to, children }: { to: string; children: ReactNo
 /** Dark pill <button>, optionally with a leading icon (e.g. "+ New Project", Figma 36:752). */
 export function DarkButton({
   leadingIcon,
+  iconSize = 18,
   children,
   className,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { leadingIcon?: string }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { leadingIcon?: string; iconSize?: number }) {
   return (
     <button type="button" className={`${DARK} ${className ?? ''}`} {...rest}>
-      {leadingIcon && <Icon name={leadingIcon} size={18} />}
+      {leadingIcon && <Icon name={leadingIcon} size={iconSize} />}
       {children}
     </button>
   )

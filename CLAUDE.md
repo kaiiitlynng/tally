@@ -44,13 +44,16 @@ Frame `37:15126` ("V3") is a desktop web-app prototype (1280px wide, no mobile f
 
 Behaviour/copy for states with no frame (flags 2+, approval, modals, invoice library, message threads, AI preferences tab) comes from the prototype code layer `36:3` (src/App.tsx, src/v2.css), which is inside this frame. Data model: src/data/store.ts.
 
-**Employee view (Nora C.)** — not built yet
+**Employee view (Nora Chen)** — built
 | Screen / state | Node ID | Component file |
 |---|---|---|
-| Home (My May timesheet) | 36:11419, 36:14728 | |
-| My Projects (current / past / detail states) | 36:11817, 36:12137, 36:12414, 36:14408 | |
-| My Time (enter / import / new entry) | 36:12734, 36:13228, 36:13657 | |
-| Messages | 36:14151 | |
+| Home (36:14728 identical) | 36:11419 | src/pages/EmployeeHome.tsx |
+| My Projects: current (36:12414, 36:14408 identical) / past | 36:11817 / 36:12137 | src/pages/MyProjects.tsx + src/sections/employee/ProjectDrawer.tsx (drawer from code layer) |
+| My Time (enter / import / form) | 36:12734, 36:13228, 36:13657 | src/pages/TimeEntries.tsx (shared, role-aware) + src/sections/time/* |
+| Messages | 36:14151 | src/pages/Messages.tsx (shared, role-aware) |
+| Employee sidebar | 36:11564 | src/components/Sidebar.tsx |
+
+Added from the code layer (no frames): New Project 3-step modal (src/sections/clients/NewProjectModal.tsx), entry filters/sort/search + chips (src/sections/time/EntriesToolbar.tsx), entry validation & soft warnings (src/data/store.ts), employee row menu Edit/Delete + locked-invoice dialog (src/sections/time/EntryDialogs.tsx), month picker (src/components/MonthPicker.tsx), employee correction reply in Messages.
 
 Shared: sidebar (e.g. 36:289), header (e.g. 36:12).
 

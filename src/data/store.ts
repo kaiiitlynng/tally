@@ -10,11 +10,13 @@ export interface Project {
   code: string
   type: string
   contact: string
+  email?: string
   address: string
   people: string[]
   reviewer: string
   status: 'Active' | 'Completed'
   deadline: string
+  completedDate?: string // yyyy-mm-dd
 }
 
 export interface Entry {
@@ -26,10 +28,11 @@ export interface Entry {
   rate: number
   description: string
   billable: boolean
-  status: 'Draft' | 'Submitted'
+  status: 'Draft' | 'Submitted' | 'Updated after submission'
   source: 'Direct' | 'Excel'
   /** Value before a reviewer correction; kept for the change history. */
   original?: string
+  submittedAt?: string // yyyy-mm-dd
 }
 
 export type FlagStatus = 'Open' | 'Awaiting employee' | 'Response received' | 'Resolved' | 'Dismissed'
@@ -57,6 +60,7 @@ export interface Message {
   time: string
   unreadBy: Role[]
   status: 'Open' | 'Replied' | 'Closed'
+  replies: { from: string; body: string; time: string }[]
 }
 
 export type InvoiceStatus = 'Draft' | 'In review' | 'Awaiting employee' | 'Ready to approve' | 'Approved' | 'Exported'
@@ -78,6 +82,26 @@ export interface Store {
 
 export const firm = 'Hartwell & Knox Forensic Advisory'
 export const partner = { name: 'Vanessa Hart', firstName: 'Vanessa', initials: 'VH', role: 'Partner / Billing manager' }
+export const employee = { name: 'Nora Chen', firstName: 'Nora', initials: 'NC', role: 'Team member' }
+export const users = { partner, employee } as const
+
+/**
+ * The prototype computes deadlines from the real clock, which makes every May 2025 deadline
+ * "overdue" today. The demo pins "today" to May 30, 2025 so it matches the frames ("04 days left").
+ */
+export const demoToday = '2025-05-30'
+
+export interface BillingPeriod {
+  year: number
+  month: number
+}
+export const currentPeriod: BillingPeriod = { year: 2025, month: 5 }
+export const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+export const periodLabel = ({ year, month }: BillingPeriod) => `${monthNames[month - 1]} ${year}`
+export const periodDefaultDate = ({ year, month }: BillingPeriod) =>
+  `${year}-${String(month).padStart(2, '0')}-${year === 2025 && month === 5 ? '28' : '01'}`
+export const entryIsInPeriod = (date: string, { year, month }: BillingPeriod) =>
+  Number(date.slice(0, 4)) === year && Number(date.slice(5, 7)) === month
 export const people = ['Vanessa Hart', 'Nora Chen', 'Ryan Cole', 'Maya Singh', 'Eli Brooks']
 
 const projects: Project[] = [
@@ -106,6 +130,7 @@ const projects: Project[] = [
     reviewer: 'Vanessa Hart',
     status: 'Completed',
     deadline: 'June 3',
+    completedDate: '2025-05-31',
   },
   {
     id: 'northstar',
@@ -246,4 +271,87 @@ export const demoImport = {
     status: 'Submitted',
     source: 'Excel',
   } satisfies Omit<Entry, 'id'>,
+}
+
+export const formatHours = (hours: number) => hours.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 })
+
+export const projectName = (s: Store, projectId: string) => s.projects.find((p) => p.id === projectId)?.name ?? 'Unknown project'
+
+export type DisplayStatus = 'Draft' | 'Submitted' | 'Flagged' | 'Updated'
+export const displayStatus = (s: Store, entry: Entry): DisplayStatus =>
+  entryIsFlagged(s, entry.id) ? 'Flagged' : entry.status === 'Updated after submission' ? 'Updated' : entry.status
+
+/** Entries on approved/exported invoices can no longer be edited or deleted. */
+export const entryIsLocked = (s: Store, entry: Entry) => ['Approved', 'Exported'].includes(s.invoiceStatus[entry.projectId])
+
+/* ---------- Time entry validation (ported from the prototype code layer) ---------- */
+
+export interface EntryForm {
+  date: string
+  projectId: string
+  hours: string
+  description: string
+  billable: boolean
+}
+export type FormErrors = Partial<Record<'projectId' | 'hours' | 'description', string>>
+export interface EntryWarning {
+  field: 'date' | 'hours' | 'description'
+  kind: string
+  message: string
+}
+
+export function validateEntry(form: EntryForm): FormErrors {
+  const errors: FormErrors = {}
+  const description = form.description
+  const trimmed = description.trim()
+  if (!form.projectId) errors.projectId = 'Please select a project before submitting.'
+  if (description === '') errors.description = 'Please add a description of the work you completed.'
+  else if (!trimmed) errors.description = "Your description can't be blank."
+  else if (!/[a-z]/i.test(trimmed)) errors.description = 'Please describe the work you completed using words.'
+  else if (/^(asdfghjkl|qwertyuiop|zxcvbnm|asdf|qwerty|hjkl)+$/i.test(trimmed.replace(/\s/g, '')))
+    errors.description = "This doesn't look like a valid work description. Please explain what you worked on."
+  else {
+    const words = trimmed.toLowerCase().match(/[a-z]+/g) || []
+    if (words.length >= 3 && new Set(words).size === 1) errors.description = 'Please provide a meaningful description of your work.'
+  }
+  if (!form.hours.trim()) errors.hours = 'Please enter the number of hours worked.'
+  else if (/^-\d+(\.\d+)?$/.test(form.hours.trim()) || Number(form.hours) === 0) errors.hours = 'Hours must be greater than zero.'
+  else if (!/^\d+(\.\d+)?$/.test(form.hours.trim())) errors.hours = 'Enter hours as a number, such as 1.5 or 2.0.'
+  else if (Number(form.hours) > 24) errors.hours = 'An entry cannot exceed 24 hours. Please check your hours.'
+  return errors
+}
+
+export function entryWarnings(form: EntryForm, entries: Entry[], person: string, threshold: number, editingId?: string): EntryWarning[] {
+  const warnings: EntryWarning[] = []
+  const hours = Number(form.hours)
+  const editing = editingId ? entries.find((e) => e.id === editingId) : undefined
+  const peers = entries.filter((e) => e.employee === person && e.id !== editingId)
+  const sameDay = peers.filter((e) => e.date === form.date).reduce((sum, e) => sum + e.hours, 0)
+  if (hours >= 8) warnings.push({ field: 'hours', kind: 'Long entry', message: 'This is a longer-than-usual entry. Is the duration correct?' })
+  if (sameDay + hours > threshold)
+    warnings.push({
+      field: 'hours',
+      kind: 'Daily total',
+      message: `You've logged ${(sameDay + hours).toFixed(1)} hours today. Please double-check your total.`,
+    })
+  const average = peers.length ? peers.reduce((sum, e) => sum + e.hours, 0) / peers.length : 0
+  if (average > 0 && hours >= 5 && hours > average * 2)
+    warnings.push({ field: 'hours', kind: 'Higher than usual', message: 'These hours are higher than usual. Please verify the amount.' })
+  const normalized = form.description.trim().toLowerCase().replace(/\s+/g, ' ')
+  if (
+    peers.some(
+      (e) =>
+        e.date === form.date && e.projectId === form.projectId && e.hours === hours && e.description.trim().toLowerCase().replace(/\s+/g, ' ') === normalized,
+    )
+  )
+    warnings.push({ field: 'description', kind: 'Possible duplicate', message: 'This looks similar to another entry you submitted. Is it a duplicate?' })
+  if (/^(worked on (the )?project|meeting|work|emails?|research|drafting)[.!]?$/i.test(normalized))
+    warnings.push({ field: 'description', kind: 'More detail helpful', message: 'Could you add more detail about what you worked on?' })
+  const date = new Date(`${form.date}T12:00:00`)
+  const cycle = new Date('2025-05-31T12:00:00')
+  if (Number.isFinite(date.getTime()) && Math.abs(date.getTime() - cycle.getTime()) > 90 * 86400000)
+    warnings.push({ field: 'date', kind: 'Work date', message: 'Please confirm that the work date is correct.' })
+  if (editing && (editing.status === 'Submitted' || editing.status === 'Updated after submission'))
+    warnings.push({ field: 'date', kind: 'Submitted period', message: 'This billing period has already been submitted. Your changes may need review.' })
+  return warnings.filter((w, i, all) => all.findIndex((x) => x.message === w.message) === i)
 }

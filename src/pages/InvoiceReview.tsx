@@ -61,6 +61,7 @@ export default function InvoiceReview() {
         time: 'Just now',
         unreadBy: ['employee'],
         status: 'Open',
+        replies: [],
       })
       s.invoiceStatus[invoiceId] = 'Awaiting employee'
       s.audit.unshift(`Vanessa asked ${entry.employee} about a linked entry`)

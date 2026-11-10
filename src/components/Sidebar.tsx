@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router'
+import { useDemo } from './DemoContext'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
-import { partner } from '../data/store'
+import type { Role } from '../data/store'
 
 interface NavItem {
   to: string
@@ -26,7 +27,16 @@ const WORKSPACE: NavItem[] = [
   { to: '/settings', label: 'Settings', icon: 'nav-settings', activeIcon: 'nav-settings-active' },
 ]
 
-function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
+const NAV: Record<Role, { billing: NavItem[]; workspace: NavItem[] }> = {
+  partner: { billing: BILLING, workspace: WORKSPACE },
+  // Employee nav (Figma 36:11564) reuses the partner icons.
+  employee: {
+    billing: [BILLING[0], { ...BILLING[1], to: '/projects', label: 'My Projects' }, { ...BILLING[2], label: 'My Time' }],
+    workspace: [WORKSPACE[0]],
+  },
+}
+
+function NavGroup({ label, items, unread }: { label: string; items: NavItem[]; unread: number }) {
   return (
     <>
       <p className="px-3 text-10 tracking-group text-ink-label uppercase">{label}</p>
@@ -46,6 +56,13 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
                 <>
                   <Icon name={isActive ? item.activeIcon : item.icon} size={18} />
                   {item.label}
+                  {item.to === '/messages' && unread > 0 && (
+                    // Unread badge: prototype code layer (.nav-item em); not drawn in Figma.
+                    <span className="ml-auto grid h-5.25 min-w-5.25 place-items-center rounded-12 bg-orange px-1.5 text-11 text-white">
+                      {unread}
+                      <span className="sr-only"> unread</span>
+                    </span>
+                  )}
                 </>
               )}
             </NavLink>
@@ -58,16 +75,20 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
 
 /** Left navigation rail (Figma 36:289). */
 export function Sidebar() {
+  const { role, me, store } = useDemo()
+  const unread = store.messages.filter((m) => m.unreadBy.includes(role)).length
+  const nav = NAV[role]
+
   return (
     <aside className="fixed inset-y-0 left-0 z-20 flex w-sidebar flex-col overflow-y-auto border-r border-line-sidebar bg-sidebar px-4 pt-6.5 pb-4.5 backdrop-blur-sidebar">
       <Logo />
       <nav aria-label="Main">
-        <NavGroup label="Billing" items={BILLING} />
+        <NavGroup label="Billing" items={nav.billing} unread={unread} />
         <div className="px-2.75 pt-3.5" aria-hidden="true">
           <div className="h-px bg-line" />
         </div>
         <div className="pt-3.5">
-          <NavGroup label="Workspace" items={WORKSPACE} />
+          <NavGroup label="Workspace" items={nav.workspace} unread={unread} />
         </div>
       </nav>
 
@@ -81,11 +102,11 @@ export function Sidebar() {
         </div>
         <div className="mt-3 flex items-center gap-2.25 border-t border-line px-1 pt-4">
           <span className="grid size-7.75 shrink-0 place-items-center rounded-full bg-avatar text-10 font-semibold text-avatar-ink">
-            {partner.initials}
+            {me.initials}
           </span>
           <div>
-            <p className="text-11 font-bold text-ink">{partner.name}</p>
-            <p className="py-px text-9 text-ink-muted">{partner.role}</p>
+            <p className="text-11 font-bold text-ink">{me.name}</p>
+            <p className="py-px text-9 text-ink-muted">{me.role}</p>
           </div>
         </div>
       </div>
