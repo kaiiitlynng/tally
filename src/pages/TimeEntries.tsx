@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { DarkButton } from '../components/Button'
-import { uid, useDemo } from '../components/DemoContext'
+import { useDemo } from '../components/DemoContext'
 import { Icon } from '../components/Icon'
 import { PageTitle } from '../components/PageTitle'
-import { Toast } from '../components/Toast'
-import { demoImport, demoToday } from '../data/store'
+import { onTabListKeyDown } from '../components/tabKeys'
 import { ColumnMapping } from '../sections/time/ColumnMapping'
 import { EntriesSection } from '../sections/time/EntriesSection'
 import { ImportDropzone } from '../sections/time/ImportDropzone'
@@ -20,9 +19,9 @@ export interface TimeIntent {
   mode: 'log' | 'entries'
 }
 
-const MODES: { id: Mode; label: string; icon: string; activeIcon: string }[] = [
-  { id: 'enter', label: 'Enter hours directly', icon: 'clock-dark', activeIcon: 'clock-white' },
-  { id: 'import', label: 'Import Excel', icon: 'upload-dark', activeIcon: 'upload-white' },
+const MODES: { id: Mode; label: string; icon: string }[] = [
+  { id: 'enter', label: 'Enter hours directly', icon: 'clock-dark' },
+  { id: 'import', label: 'Import Excel', icon: 'upload-dark' },
 ]
 
 /**
@@ -36,11 +35,9 @@ export default function TimeEntries() {
   const [intent] = useState(() => (location.state as { intent?: TimeIntent } | null)?.intent)
   const mode: Mode = params.get('mode') === 'import' ? 'import' : 'enter'
   const [step, setStep] = useState<'drop' | 'parsing' | 'mapping' | 'done'>('drop')
-  const [notice, setNotice] = useState('')
   const [formKey, setFormKey] = useState(0)
-  const { update, role, me } = useDemo()
+  const { role, me, toast: setNotice } = useDemo()
   const entriesRef = useRef<HTMLElement>(null)
-  const clearNotice = useCallback(() => setNotice(''), [])
 
   // Simulated parse, as in the prototype: 700ms then show the column mapping.
   useEffect(() => {
@@ -68,15 +65,6 @@ export default function TimeEntries() {
     setParams(next === 'import' ? { mode: 'import' } : {}, { replace: true })
   }
 
-  function confirmImport() {
-    update((s) => {
-      s.entries.push({ ...demoImport.entry, id: uid(), submittedAt: demoToday })
-      s.submissions[demoImport.entry.employee] = 'Submitted'
-      s.audit.unshift(`${demoImport.entry.employee} submitted a validated Excel time entry`)
-    })
-    setStep('done')
-    setNotice('Time entry submitted successfully.')
-  }
 
   return (
     <>
@@ -99,9 +87,8 @@ export default function TimeEntries() {
           )
         }
       />
-      <Toast message={notice} onDone={clearNotice} />
 
-      <div role="tablist" aria-label="How to add time" className="flex gap-1.5 pt-6">
+      <div role="tablist" aria-label="How to add time" onKeyDown={onTabListKeyDown} className="flex gap-1.5 pt-6">
         {MODES.map((m) => {
           const active = m.id === mode
           return (
@@ -110,13 +97,14 @@ export default function TimeEntries() {
               role="tab"
               id={`tab-${m.id}`}
               aria-selected={active}
+              tabIndex={active ? 0 : -1}
               aria-controls="time-panel"
               onClick={() => setMode(m.id)}
-              className={`flex h-9.5 items-center gap-1.75 rounded-18 border border-line px-3.25 text-9 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark ${
-                active ? 'bg-dark text-white' : 'bg-surface-soft text-ink hover:bg-white'
+              className={`flex h-10 items-center gap-2 rounded-sm border border-line px-3.5 text-body font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                active ? 'border-brand-200 bg-brand-50 font-semibold text-brand' : 'bg-surface text-ink-muted hover:border-brand-200 hover:text-ink'
               }`}
             >
-              <Icon name={active ? m.activeIcon : m.icon} size={18} />
+              <Icon tint name={m.icon} size={18} />
               {m.label}
             </button>
           )
@@ -129,7 +117,7 @@ export default function TimeEntries() {
         )}
         {mode === 'import' && step === 'drop' && <ImportDropzone onFile={() => setStep('parsing')} />}
         {mode === 'import' && step === 'parsing' && <ParsingState />}
-        {mode === 'import' && (step === 'mapping' || step === 'done') && <ColumnMapping submitted={step === 'done'} onSubmit={confirmImport} />}
+        {mode === 'import' && (step === 'mapping' || step === 'done') && <ColumnMapping onReupload={() => setStep('drop')} onSubmitted={() => setNotice('Time entry submitted successfully.')} />}
       </div>
 
       <EntriesSection ref={entriesRef} initialProjectFilter={intent?.mode === 'entries' ? intent.projectId : undefined} onNotice={setNotice} />

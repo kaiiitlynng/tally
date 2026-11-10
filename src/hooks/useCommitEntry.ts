@@ -34,6 +34,7 @@ export function useCommitEntry() {
 
       if (submit) {
         s.submissions[me.name] = 'Submitted'
+        s.lastSubmitted[me.name] = demoToday
         s.reminderLog.unshift(`${me.name} submitted time; pending overdue reminders canceled`)
         // Warnings the person confirmed still reach the billing reviewer as flags.
         acknowledged.forEach((w) =>

@@ -4,12 +4,12 @@ import { Icon } from '../../components/Icon'
 /** "Want to double-check this entry?" callout (prototype code layer .warning-confirm). */
 export function WarningConfirm({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div role="status" className="mt-3.75 flex items-center justify-between gap-4.5 rounded-11 border border-confirm-line bg-confirm-soft px-3.5 py-3.25 text-confirm-ink">
+    <div role="status" className="mt-3.75 flex items-center justify-between gap-4.5 rounded-md border border-confirm-line bg-confirm-soft px-3.5 py-3.25 text-confirm-ink">
       <div className="flex items-center gap-2.25">
         <Icon name="review-caution" size={18} />
         <span>
-          <b className="block text-9 font-bold">{title}</b>
-          <small className="mt-0.75 block text-7 text-confirm-body">Nothing will be changed automatically. Confirm only if the details are correct.</small>
+          <b className="block text-small font-semibold">{title}</b>
+          <small className="mt-0.75 block text-caption text-confirm-body">Nothing will be changed automatically. Confirm only if the details are correct.</small>
         </span>
       </div>
       <div className="flex shrink-0 gap-2">{children}</div>

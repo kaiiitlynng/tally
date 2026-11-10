@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon'
 import { PageTitle } from '../components/PageTitle'
 import { Pill } from '../components/Pill'
 import { SectionHeading } from '../components/SectionHeading'
+import { daysFromToday } from '../data/store'
 
 /** Employee home (Figma 36:11419 → content 36:11446). Copy for the "question waiting" state is from the code layer. */
 export default function EmployeeHome() {
@@ -13,6 +14,9 @@ export default function EmployeeHome() {
   const drafts = mine.filter((e) => e.status === 'Draft').length
   const openRequests = store.messages.filter((m) => m.to === me.name && m.status === 'Open').length
   const assigned = store.projects.filter((p) => p.people.includes(me.name))
+  const daysLeft = Math.max(0, daysFromToday('2025-06-03'))
+  // "On track" only while nothing is waiting on Nora and her timesheet isn't overdue.
+  const onTrack = !openRequests && store.submissions[me.name] !== 'Overdue'
 
   const quick = [
     { to: '/time', icon: 'quick-plus', title: 'Log time', hint: 'Enter hours directly' },
@@ -27,63 +31,67 @@ export default function EmployeeHome() {
         eyebrow="My May timesheet"
         title={`Good morning, ${me.firstName}.`}
         description="Log your work, respond to billing questions, and submit by June 3."
-        actions={<Pill tone="success">On track</Pill>}
+        actions={onTrack && <Pill tone="success">On track</Pill>}
       />
 
       <section
         aria-labelledby="employee-hero"
-        className="mt-6 flex min-h-47.5 items-center justify-between rounded-22 border border-hero-line bg-hero-employee px-7.5 py-7 drop-shadow-hero"
+        className="relative isolate mt-6 flex min-h-48 items-center justify-between overflow-hidden rounded-xl border border-hero-line bg-hero-employee px-8 py-8 shadow-hero"
       >
+        <span aria-hidden="true" className="pointer-events-none absolute -top-24 -right-40 -z-10 h-44 w-200 origin-center animate-ribbon ribbon" />
         <div>
           <div className="pt-0.5">
             <Pill tone="accent">Due June 3</Pill>
           </div>
-          <h2 id="employee-hero" className="pt-3.5 text-28 font-medium tracking-title text-ink">
+          <h2 id="employee-hero" className="pt-3.5 text-title-lg font-semibold tracking-title text-ink">
             {openRequests ? 'A billing question needs your response' : 'Your time is almost ready'}
           </h2>
-          <p className="pt-1.75 pb-4.5 text-11 text-hero-ink">
+          <p className="pt-2 pb-6 text-lead text-hero-ink">
             {openRequests ? 'Vanessa linked the exact entry that needs clarification.' : `${mine.length} entries saved. ${drafts} still in draft.`}
           </p>
           <DarkLinkButton to={openRequests ? '/messages' : '/time'}>{openRequests ? 'Respond now' : 'Log time'}</DarkLinkButton>
         </div>
-        <div className="flex size-26.25 shrink-0 flex-col items-center justify-center rounded-full border border-ring-line bg-ring text-ink">
-          <b className="font-display text-31 font-bold tracking-stat-ring">04</b>
-          <span className="text-8">days left</span>
+        {/* Gradient rim (ribbon colors) around a white disc keeps the count legible over the ribbon. */}
+        <div className="grid size-30 shrink-0 place-items-center rounded-full ribbon-rim p-1 shadow-raised">
+          <div className="flex size-full flex-col items-center justify-center rounded-full bg-surface text-ink">
+            <b className="font-display text-display font-bold tracking-stat-ring text-brand">{String(daysLeft).padStart(2, '0')}</b>
+            <span className="text-caption font-medium text-ink-muted">{daysLeft === 1 ? 'day left' : 'days left'}</span>
+          </div>
         </div>
       </section>
 
-      <nav aria-label="Quick actions" className="grid grid-cols-4 gap-2.75 pt-5">
+      <nav aria-label="Quick actions" className="grid grid-cols-4 gap-3 pt-6">
         {quick.map((q) => (
           <Link
             key={q.title}
             to={q.to}
-            className="grid grid-cols-[38px_1fr] grid-rows-[auto_auto] gap-x-2.5 gap-y-0.5 rounded-14 border border-line bg-surface p-3.75 transition-colors hover:border-hero-line hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark"
+            className="group grid grid-cols-[40px_1fr] grid-rows-[auto_auto] items-center gap-x-3 gap-y-0.5 rounded-lg border border-line bg-surface p-4 shadow-card card-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            <span className="row-span-2 grid size-9.25 place-items-center rounded-11 bg-quick-tile">
+            <span className="row-span-2 grid size-10 place-items-center rounded-md bg-quick-tile transition-colors duration-200 group-hover:bg-brand-200">
               <Icon name={q.icon} size={18} />
             </span>
-            <b className="text-10 font-bold text-ink">{q.title}</b>
-            <span className="text-7 text-ink-muted">{q.hint}</span>
+            <b className="text-body font-semibold text-ink">{q.title}</b>
+            <span className="text-small text-ink-muted">{q.hint}</span>
           </Link>
         ))}
       </nav>
 
-      <section aria-labelledby="assigned" className="mt-5 rounded-16 border border-line bg-surface p-5">
+      <section aria-labelledby="assigned" className="mt-6 rounded-lg border border-line bg-surface shadow-card p-5">
         <SectionHeading id="assigned" title="My assigned projects" description="Only projects you can charge time to appear here." />
         <ul className="pt-2.5">
           {assigned.map((p) => (
-            <li key={p.id} className="flex items-center gap-2.75 border-t border-line-row py-2.75">
-              <span className="grid size-8.5 place-items-center rounded-10 bg-mini-tile text-8" aria-hidden="true">
+            <li key={p.id} className="flex items-center gap-3 border-t border-line-row py-3">
+              <span className="grid size-9 place-items-center rounded-md bg-mini-tile text-caption font-semibold text-brand" aria-hidden="true">
                 {p.name.slice(0, 2).toUpperCase()}
               </span>
               <div className="flex-1">
-                <b className="block text-9 font-bold">{p.name}</b>
-                <small className="block pt-0.5 text-7 text-ink-muted">
+                <b className="block text-body font-semibold">{p.name}</b>
+                <small className="block pt-0.5 text-small text-ink-muted">
                   {p.client} · {p.code}
                 </small>
               </div>
               {/* Figma fixes this pill at 34×34 (text overflows); sized to content here. The code layer always shows "Active". */}
-              <span className="rounded-10 bg-success-pill px-2.25 py-1.25 text-8 font-semibold text-success-ink">Active</span>
+              <Pill tone="success">Active</Pill>
             </li>
           ))}
         </ul>

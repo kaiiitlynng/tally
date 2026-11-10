@@ -2,13 +2,26 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Icon } from './Icon'
 
-const DARK =
-  'inline-flex h-9.5 items-center justify-center gap-2 rounded-20 border border-dark bg-dark px-4 text-11 font-semibold text-white transition-colors hover:bg-ink-subtle hover:border-ink-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark'
+/** Shared button mechanics: 40px target, 6px radius, a slight press-in on click (stripe-design). */
+const BASE =
+  'group inline-flex h-10 items-center justify-center gap-2 rounded-sm border px-4 text-body font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-stripe active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:border-line disabled:bg-surface-muted disabled:text-ink-placeholder disabled:shadow-none motion-reduce:active:scale-100'
 
-const OUTLINE =
-  'inline-flex h-9.5 items-center justify-center rounded-20 border border-line bg-surface px-4 text-11 font-semibold text-ink transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dark'
+/** Solid brand button (#533afd → #2e2b8c on hover). */
+const DARK = `${BASE} border-brand bg-brand text-white shadow-card hover:border-brand-hover hover:bg-brand-hover`
 
-/** Light outlined pill <button>, e.g. "Save draft" (Figma 36:1358). */
+/** Quiet button: white with a lavender border and brand text, like Stripe's secondary CTA. */
+const OUTLINE = `${BASE} border-line bg-surface text-ink hover:border-brand-200 hover:bg-brand-25 hover:text-brand`
+
+/** Trailing chevron that slides right on hover (Stripe's "Get started ›"). */
+function Arrow() {
+  return (
+    <span aria-hidden="true" className="transition-transform duration-150 ease-stripe group-hover:translate-x-0.5 motion-reduce:transition-none">
+      <Icon name="arrow-right-white" size={16} />
+    </span>
+  )
+}
+
+/** Light outlined <button>, e.g. "Save draft" (Figma 36:1358). */
 export function OutlineButton({ children, className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button type="button" className={`${OUTLINE} ${className ?? ''}`} {...rest}>
@@ -17,17 +30,17 @@ export function OutlineButton({ children, className, ...rest }: ButtonHTMLAttrib
   )
 }
 
-/** Dark pill call-to-action with trailing arrow (Figma 36:59). Renders a router link. */
+/** Brand call-to-action with trailing arrow (Figma 36:59). Renders a router link. */
 export function DarkLinkButton({ to, children }: { to: string; children: ReactNode }) {
   return (
     <Link to={to} className={DARK}>
       {children}
-      <Icon name="arrow-right-white" size={18} />
+      <Arrow />
     </Link>
   )
 }
 
-/** Dark pill <button>, optionally with a leading icon (e.g. "+ New Project", Figma 36:752). */
+/** Brand <button>, optionally with a leading icon (e.g. "+ New Project", Figma 36:752). */
 export function DarkButton({
   leadingIcon,
   iconSize = 18,

@@ -5,7 +5,7 @@ import { Pill, type PillTone } from '../../components/Pill'
 import { SectionHeading } from '../../components/SectionHeading'
 import { displayStatus, entryIsInPeriod, entryIsLocked, formatHours, periodLabel, projectName, tableDate, type DisplayStatus, type Entry } from '../../data/store'
 import { DeleteEntryDialog, EditEntryDialog, LockedEntryDialog } from './EntryDialogs'
-import { EntriesToolbar, FilterChips, emptyFilters, type EntryFilters, type EntrySort } from './EntriesToolbar'
+import { DEFAULT_SORT, EntriesToolbar, FilterChips, emptyFilters, type EntryFilters, type EntrySort, type SortKey } from './EntriesToolbar'
 
 const TONE: Record<DisplayStatus, PillTone> = { Submitted: 'success', Flagged: 'accent', Draft: 'neutral', Updated: 'success' }
 
@@ -14,8 +14,27 @@ const PARTNER_COLS: (number | undefined)[] = [96, 100, 178, undefined, 96, 58, 1
 // Employee grid (Figma 36:12865): 205.8/465.29/80.53/134.22/75.16 px of 961px.
 const EMPLOYEE_COLS = ['21.4%', '48.4%', '8.4%', '14%', '7.8%']
 
-const TH = 'h-11.5 pr-2 text-left align-middle text-7 font-normal tracking-th text-ink-th uppercase'
-const TD = 'h-11.5 border-t border-line-row py-2.5 pr-2 align-middle text-9 text-ink'
+const TH = 'h-11.5 pr-2 text-left align-middle text-caption font-normal tracking-th text-ink-th uppercase'
+
+/** Column header that sorts on click; a second click reverses (spec item 2). */
+function SortTh({ label, k, sort, setSort, className = '' }: { label: string; k: SortKey; sort: EntrySort; setSort: (s: EntrySort) => void; className?: string }) {
+  const active = sort.key === k
+  return (
+    <th scope="col" aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'} className={`${TH} ${className}`}>
+      <button
+        type="button"
+        onClick={() => setSort({ key: k, dir: active && sort.dir === 'asc' ? 'desc' : 'asc' })}
+        className={`inline-flex items-center gap-1 rounded-xs uppercase hover:text-ink focus-visible:outline-2 focus-visible:outline-accent ${active ? 'text-ink' : ''}`}
+      >
+        {label}
+        <span aria-hidden="true" className={active ? '' : 'invisible'}>
+          {sort.dir === 'asc' ? '↑' : '↓'}
+        </span>
+      </button>
+    </th>
+  )
+}
+const TD = 'h-11.5 border-t border-line-row py-2.5 pr-2 align-middle text-small text-ink'
 
 function RowMenu({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false)
@@ -32,7 +51,7 @@ function RowMenu({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => void
     }
   }, [open])
 
-  const item = 'flex w-full items-center gap-1.75 rounded-7 p-2 text-left text-8 hover:bg-chip focus-visible:outline-2 focus-visible:outline-dark'
+  const item = 'flex w-full items-center gap-1.75 rounded-sm p-2 text-left text-caption hover:bg-chip focus-visible:outline-2 focus-visible:outline-accent'
   return (
     <div ref={ref} className="relative">
       <button
@@ -41,12 +60,12 @@ function RowMenu({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => void
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="size-7 rounded-8 text-9 font-semibold tracking-[1px] hover:bg-segment focus-visible:outline-2 focus-visible:outline-dark"
+        className="size-7 rounded-sm text-small font-semibold tracking-[1px] hover:bg-segment focus-visible:outline-2 focus-visible:outline-accent"
       >
         •••
       </button>
       {open && (
-        <div role="menu" className="absolute top-6.75 right-0 z-12 w-28 rounded-10 border border-line bg-menu p-1.25 shadow-menu">
+        <div role="menu" className="absolute top-6.75 right-0 z-12 w-28 rounded-md border border-line bg-menu p-1.25 shadow-menu animate-pop">
           <button role="menuitem" type="button" className={item} onClick={() => (setOpen(false), onEdit())}>
             <Icon name="edit" size={13} /> Edit
           </button>
@@ -66,8 +85,7 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
 ) {
   const { store, role, me, period } = useDemo()
   const [filters, setFilters] = useState<EntryFilters>({ ...emptyFilters, projectId: initialProjectFilter ?? '' })
-  // Partner rows keep Figma's "most recently added first" order until a sort is chosen.
-  const [sort, setSort] = useState<EntrySort | null>(role === 'employee' ? 'date-desc' : null)
+  const [sort, setSort] = useState<EntrySort>(DEFAULT_SORT)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Entry | null>(null)
   const [deleting, setDeleting] = useState<Entry | null>(null)
@@ -95,24 +113,19 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
     .filter((e) => !filters.source || (filters.source === 'excel' ? e.source === 'Excel' : e.source === 'Direct'))
     .filter((e) => !term || e.description.toLowerCase().includes(term) || name(e).toLowerCase().includes(term))
     .sort((a, b) => {
-      switch (sort) {
-        case 'date-asc':
-          return a.date.localeCompare(b.date)
-        case 'date-desc':
-          return b.date.localeCompare(a.date)
-        case 'project-asc':
-          return name(a).localeCompare(name(b))
-        case 'project-desc':
-          return name(b).localeCompare(name(a))
-        case 'hours-desc':
-          return b.hours - a.hours
-        case 'hours-asc':
-          return a.hours - b.hours
-        case 'status':
-          return status(a).localeCompare(status(b))
-        default:
-          return 0
+      const last = (e: Entry) => e.employee.split(' ').at(-1)!
+      const primary: Record<SortKey, number> = {
+        date: a.date.localeCompare(b.date),
+        employee: last(a).localeCompare(last(b)),
+        project: name(a).localeCompare(name(b)),
+        description: a.description.localeCompare(b.description),
+        source: a.source.localeCompare(b.source),
+        hours: a.hours - b.hours,
+        status: status(a).localeCompare(status(b)),
       }
+      const d = primary[sort.key] * (sort.dir === 'asc' ? 1 : -1)
+      // Ties: date ascending, then employee last name A–Z.
+      return d || a.date.localeCompare(b.date) || last(a).localeCompare(last(b))
     })
 
   const structuredActive = customRange || Boolean(filters.projectId || filters.status || filters.billable || filters.source)
@@ -152,7 +165,7 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
       />
       <FilterChips chips={chips} onClearAll={clearAll} />
 
-      <div className="mt-1.75 overflow-hidden rounded-14 border border-line bg-surface">
+      <div className="mt-1.75 overflow-hidden rounded-lg border border-line bg-surface shadow-card">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
             {role === 'partner'
@@ -162,21 +175,21 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
           <thead>
             {role === 'partner' ? (
               <tr>
-                <th scope="col" className={`${TH} pl-4`}>Date</th>
-                <th scope="col" className={TH}>Employee</th>
-                <th scope="col" className={TH}>Project</th>
-                <th scope="col" className={TH}>Description</th>
-                <th scope="col" className={TH}>Source</th>
-                <th scope="col" className={`${TH} text-right`}>Hours</th>
-                <th scope="col" className={TH}>Status</th>
+                <SortTh label="Date" k="date" sort={sort} setSort={setSort} className="pl-4" />
+                <SortTh label="Employee" k="employee" sort={sort} setSort={setSort} />
+                <SortTh label="Project" k="project" sort={sort} setSort={setSort} />
+                <SortTh label="Description" k="description" sort={sort} setSort={setSort} />
+                <SortTh label="Source" k="source" sort={sort} setSort={setSort} />
+                <SortTh label="Hours" k="hours" sort={sort} setSort={setSort} className="text-right" />
+                <SortTh label="Status" k="status" sort={sort} setSort={setSort} />
                 <td className="pr-4" />
               </tr>
             ) : (
               <tr>
-                <th scope="col" className={`${TH} pl-4`}>Project</th>
-                <th scope="col" className={TH}>Description</th>
-                <th scope="col" className={TH}>Hours</th>
-                <th scope="col" className={TH}>Status</th>
+                <SortTh label="Project" k="project" sort={sort} setSort={setSort} className="pl-4" />
+                <SortTh label="Description" k="description" sort={sort} setSort={setSort} />
+                <SortTh label="Hours" k="hours" sort={sort} setSort={setSort} />
+                <SortTh label="Status" k="status" sort={sort} setSort={setSort} />
                 <th scope="col" className={`${TH} pr-4`}>Actions</th>
               </tr>
             )}
@@ -184,12 +197,12 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
           <tbody>
             {visible.map((e) =>
               role === 'partner' ? (
-                <tr key={e.id}>
+                <tr key={e.id} className="transition-colors duration-150 hover:bg-brand-25">
                   <td className={`${TD} pl-4`}>{tableDate(e.date)}</td>
                   <td className={`${TD} truncate`}>{e.employee}</td>
                   <td className={`${TD} truncate`}>{name(e)}</td>
                   <td className={`${TD} truncate`}>{e.description}</td>
-                  <td className={`${TD} text-8 text-ink-source`}>{e.source === 'Excel' ? 'Excel import' : 'Direct entry'}</td>
+                  <td className={`${TD} text-caption text-ink-source`}>{e.source === 'Excel' ? 'Excel import' : 'Direct entry'}</td>
                   <td className={`${TD} text-right`}>{e.hours.toFixed(1)}</td>
                   <td className={TD}>
                     <Pill tone={TONE[status(e)]} size="lg">
@@ -199,7 +212,7 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
                   <td className={`${TD} pr-4`} />
                 </tr>
               ) : (
-                <tr key={e.id}>
+                <tr key={e.id} className="transition-colors duration-150 hover:bg-brand-25">
                   <td className={`${TD} h-14.5 truncate pl-4`}>{name(e)}</td>
                   <td className={`${TD} truncate`}>{e.description}</td>
                   <td className={TD}>{formatHours(e.hours)}</td>
@@ -215,10 +228,10 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
           </tbody>
         </table>
         {visible.length === 0 && (
-          <div className="border-t border-line-row px-5 py-10.5 text-center text-9 text-ink-muted">
+          <div className="border-t border-line-row px-5 py-10.5 text-center text-small text-ink-muted">
             <p>{filtersActive ? 'No entries match your filters.' : 'No time entries for this month yet.'}</p>
             {filtersActive && (
-              <button type="button" onClick={clearAll} className="mt-2.25 text-8 text-link underline">
+              <button type="button" onClick={clearAll} className="mt-2.25 text-caption text-link underline">
                 Clear filters
               </button>
             )}

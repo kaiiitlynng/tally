@@ -3,7 +3,7 @@ import { DarkButton, OutlineButton } from './Button'
 import { Icon } from './Icon'
 
 /**
- * Native <dialog> base: focus trapping, Esc to close and an inert, blurred background.
+ * Native <dialog> base: focus trapping, Esc to close and an inert, dimmed background (no blur, per stripe-design).
  * Visual spec: Figma 36:8726 (Request time now) and the prototype code layer's v2.css.
  */
 export function Dialog({
@@ -39,8 +39,8 @@ export function Dialog({
       onClick={placement === 'right' ? (e) => e.target === e.currentTarget && onClose() : undefined}
       className={`overflow-y-auto border-line bg-modal text-ink ${
         placement === 'center'
-          ? 'm-auto max-h-[90vh] border shadow-modal backdrop:bg-scrim backdrop:backdrop-blur-scrim'
-          : 'my-0 mr-0 ml-auto h-dvh max-h-dvh border-l shadow-drawer backdrop:bg-scrim-light backdrop:backdrop-blur-[2px]'
+          ? 'm-auto max-h-[90vh] border shadow-modal animate-pop backdrop:bg-scrim backdrop:animate-fade'
+          : 'my-0 mr-0 ml-auto h-dvh max-h-dvh border-l shadow-drawer animate-slide-in backdrop:bg-scrim-light backdrop:animate-fade'
       } ${className}`}
     >
       {children}
@@ -65,20 +65,20 @@ interface ModalProps {
 /** Titled dialog with a close button and Cancel / confirm actions. */
 export function Modal({ title, eyebrow, onClose, confirmLabel, onConfirm, footer, size = 'md', children }: ModalProps) {
   return (
-    <Dialog labelledBy="modal-title" onClose={onClose} className={`rounded-22 p-6.75 ${size === 'md' ? 'w-117.5' : 'w-155'}`}>
-      <div className="flex items-start justify-between">
+    <Dialog labelledBy="modal-title" onClose={onClose} className={`rounded-xl p-7 ${size === 'md' ? 'w-120' : 'w-160'}`}>
+      <div className="mb-5 flex items-start justify-between">
         <div>
-          {eyebrow && <p className="text-9 font-semibold tracking-eyebrow text-eyebrow uppercase">{eyebrow}</p>}
-          <h2 id="modal-title" className="my-1 text-23 font-medium">
+          {eyebrow && <p className="text-caption font-semibold tracking-eyebrow text-eyebrow uppercase">{eyebrow}</p>}
+          <h2 id="modal-title" className="my-1 text-title font-semibold tracking-title">
             {title}
           </h2>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="rounded-10 p-1 hover:bg-segment focus-visible:outline-2 focus-visible:outline-dark">
+        <button type="button" onClick={onClose} aria-label="Close" className="-mt-1 -mr-1 rounded-sm p-2 text-ink-muted transition-colors hover:bg-segment focus-visible:outline-2 focus-visible:outline-accent">
           <Icon name="close" size={18} />
         </button>
       </div>
       {children}
-      <div className="mt-6 flex justify-end gap-2">
+      <div className="-mx-7 mt-7 -mb-7 flex justify-end gap-2 rounded-b-xl border-t border-line bg-surface-muted px-7 py-4">
         {footer ?? (
           <>
             <OutlineButton onClick={onClose}>Cancel</OutlineButton>
@@ -91,5 +91,5 @@ export function Modal({ title, eyebrow, onClose, confirmLabel, onConfirm, footer
 }
 
 export function Disclaimer({ children }: { children: ReactNode }) {
-  return <p className="text-8 text-ink-muted">{children}</p>
+  return <p className="text-caption text-ink-muted">{children}</p>
 }

@@ -50,7 +50,7 @@ export function EntryFields({ idPrefix, form, onChange, errors, warnings, projec
         />
       </Field>
       <div className="flex flex-col gap-1.5">
-        <span id={id('treatment')} className="text-8 font-semibold text-ink-field">
+        <span id={id('treatment')} className="text-small font-semibold text-ink">
           Billing treatment
         </span>
         <SegmentedRadio

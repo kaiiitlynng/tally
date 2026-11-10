@@ -9,13 +9,13 @@ const TITLES = ['Client information', 'Project details', 'Billing configuration'
 const CATEGORIES = ['Consulting', 'Accounting and advisory', 'Legal services', 'Engineering', 'Creative agency']
 
 /** Three-step "New Project" flow (prototype code layer; not drawn in Figma). */
-export function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+export function NewProjectModal({ onClose, onCreated, initialName = '' }: { onClose: () => void; onCreated: (id: string) => void; initialName?: string }) {
   const { update } = useDemo()
   const [step, setStep] = useState(1)
   const [missing, setMissing] = useState<string[]>([])
   const [form, setForm] = useState({
     client: '',
-    name: '',
+    name: initialName,
     code: '2025-022',
     type: 'Consulting',
     contact: '',
@@ -37,7 +37,7 @@ export function NewProjectModal({ onClose, onCreated }: { onClose: () => void; o
       s.invoiceStatus[id] = 'Draft'
       s.audit.unshift(`Vanessa created ${form.name}`)
     })
-    onCreated()
+    onCreated(id)
   }
 
   return (
@@ -51,7 +51,6 @@ export function NewProjectModal({ onClose, onCreated }: { onClose: () => void; o
           {step > 1 && <OutlineButton onClick={() => setStep(step - 1)}>Back</OutlineButton>}
           <DarkButton onClick={next}>
             {step < 3 ? 'Continue' : 'Create project'}
-            <img src="/assets/icons/arrow-right-white.svg" alt="" aria-hidden="true" width={18} height={18} />
           </DarkButton>
         </>
       }
@@ -95,8 +94,8 @@ export function NewProjectModal({ onClose, onCreated }: { onClose: () => void; o
             </Select>
           </Field>
           <div className="col-span-2 flex flex-col gap-1.5">
-            <span className="text-8 font-semibold text-ink-field">Assigned employees</span>
-            <div className="rounded-10 border border-line-field bg-white p-2.75 text-10">Nora Chen, Vanessa Hart</div>
+            <span className="text-small font-semibold text-ink">Assigned employees</span>
+            <div className="rounded-md border border-line-field bg-white p-2.75 text-small">Nora Chen, Vanessa Hart</div>
           </div>
         </div>
       )}
@@ -125,11 +124,11 @@ export function NewProjectModal({ onClose, onCreated }: { onClose: () => void; o
               <option>Custom project rates</option>
             </Select>
           </Field>
-          <div className="col-span-2 flex items-center gap-2.5 rounded-10 bg-rate-note p-3 text-done-ink">
+          <div className="col-span-2 flex items-center gap-2.5 rounded-md bg-rate-note p-3 text-done-ink">
             <Icon name="check-rate" size={18} />
             <span>
-              <b className="block text-9 font-bold">Standard rates will apply by work date</b>
-              <small className="mt-0.75 block text-7">Historical entries keep the rate effective when work occurred.</small>
+              <b className="block text-small font-semibold">Standard rates will apply by work date</b>
+              <small className="mt-0.75 block text-caption">Historical entries keep the rate effective when work occurred.</small>
             </span>
           </div>
         </div>

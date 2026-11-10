@@ -29,16 +29,16 @@ export function ProjectDrawer({ project, onClose }: { project: Project; onClose:
     <Dialog labelledBy="drawer-title" onClose={onClose} placement="right" className="w-107.5 p-6.25">
       <div className="flex items-center justify-between border-b border-line pb-3.75">
         <div>
-          <p className="text-9 font-semibold tracking-eyebrow text-eyebrow uppercase">{periodLabel(currentPeriod)} billing period</p>
-          <h2 id="drawer-title" className="mt-1 text-24 font-medium">
+          <p className="text-small font-semibold tracking-eyebrow text-eyebrow uppercase">{periodLabel(currentPeriod)} billing period</p>
+          <h2 id="drawer-title" className="mt-1 text-title tracking-title font-semibold">
             {project.name}
           </h2>
         </div>
-        <button type="button" aria-label="Close project details" onClick={onClose} className="rounded-10 p-1 hover:bg-segment focus-visible:outline-2 focus-visible:outline-dark">
+        <button type="button" aria-label="Close project details" onClick={onClose} className="rounded-md p-1 hover:bg-segment focus-visible:outline-2 focus-visible:outline-accent">
           <Icon name="close" size={18} />
         </button>
       </div>
-      <p className="mt-3.75 mb-3 text-9 text-ink-muted">
+      <p className="mt-3.75 mb-3 text-small text-ink-muted">
         {project.client} · {project.code}
       </p>
       <div className="mb-4.5 flex gap-1.5">
@@ -47,22 +47,22 @@ export function ProjectDrawer({ project, onClose }: { project: Project; onClose:
       </div>
       <dl className="border-t border-line">
         {rows.map(([t, d]) => (
-          <div key={t} className="grid grid-cols-[130px_1fr] gap-3 border-b border-drawer-row py-2.75 text-9">
+          <div key={t} className="grid grid-cols-[130px_1fr] gap-3 border-b border-drawer-row py-2.75 text-small">
             <dt className="text-ink-muted">{t}</dt>
             <dd className="text-right font-semibold">{d}</dd>
           </div>
         ))}
       </dl>
       <div className="mt-5.25">
-        <small className="block text-7 tracking-meta text-ink-meta-soft">ASSIGNED TEAM</small>
+        <small className="block text-caption tracking-meta text-ink-meta-soft">ASSIGNED TEAM</small>
         <ul>
           {project.people.map((person) => (
             <li key={person} className="grid grid-cols-[34px_1fr_auto] items-center gap-2.25 border-b border-drawer-row py-2.25">
-              <span className="grid size-8 place-items-center rounded-full bg-member text-8" aria-hidden="true">
+              <span className="grid size-8 place-items-center rounded-full bg-member text-caption" aria-hidden="true">
                 {initials(person)}
               </span>
-              <b className="text-9 font-bold">{person}</b>
-              {person === project.reviewer && <em className="text-7 text-reviewer-ink not-italic">Billing reviewer</em>}
+              <b className="text-small font-semibold">{person}</b>
+              {person === project.reviewer && <em className="text-caption text-reviewer-ink not-italic">Billing reviewer</em>}
             </li>
           ))}
         </ul>

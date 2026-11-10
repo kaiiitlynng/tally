@@ -33,6 +33,39 @@ export interface Entry {
   /** Value before a reviewer correction; kept for the change history. */
   original?: string
   submittedAt?: string // yyyy-mm-dd
+  /** Where the hours came from, e.g. "Ryan_May.xlsx, row 14". Direct entries derive theirs from the date. */
+  sourceRef?: string
+  /** Partner marked this line "No charge": stays on the invoice, excluded from the total. */
+  noCharge?: boolean
+  /** First reviewer change to this line; the original values are kept for the "Edited by" marker. */
+  review?: { by: string; original: { hours: number; description: string; rate: number; noCharge: boolean } }
+}
+
+export interface RemovedLine {
+  entry: Entry
+  reason: string
+  by: string
+}
+
+/** Excel rows whose matter name matched no Tally project. Held until mapped (spec item 3). */
+export interface HeldRow {
+  id: string
+  employee: string
+  matter: string
+  date: string
+  hours: number
+  description: string
+  file: string
+  row?: number
+  /** Set once the partner has asked the employee about it. */
+  asked?: boolean
+}
+
+export interface Notification {
+  id: string
+  text: string
+  to: string
+  read: boolean
 }
 
 export type FlagStatus = 'Open' | 'Awaiting employee' | 'Response received' | 'Resolved' | 'Dismissed'
@@ -47,11 +80,14 @@ export interface Flag {
   suggestion: string
   impact: number
   status: FlagStatus
+  /** "daily" flags are derived from the daily-hours threshold; they are not stored. */
+  kind?: 'daily'
+  note?: string
 }
 
 export interface Message {
   id: string
-  projectId: string
+  projectId?: string
   entryId?: string
   from: string
   to: string
@@ -63,7 +99,7 @@ export interface Message {
   replies: { from: string; body: string; time: string }[]
 }
 
-export type InvoiceStatus = 'Draft' | 'In review' | 'Awaiting employee' | 'Ready to approve' | 'Approved' | 'Exported'
+export type InvoiceStatus = 'Draft' | 'In review' | 'Awaiting employee' | 'Ready to approve' | 'Approved' | 'Exported' | 'Sent'
 export type Submission = 'Submitted' | 'Due soon' | 'Overdue'
 
 export interface Store {
@@ -73,11 +109,23 @@ export interface Store {
   messages: Message[]
   invoiceStatus: Record<string, InvoiceStatus>
   submissions: Record<string, Submission>
+  /** Date of each person's latest timesheet submission (yyyy-mm-dd). */
+  lastSubmitted: Record<string, string>
   reminderLog: string[]
   audit: string[]
   rates: Record<string, number>
+  /** 2026 rates scheduled from Settings; effective Jan 1, 2026. Empty until saved. */
+  scheduledRates: Record<string, number>
   reminderChannels: { inApp: boolean; email: boolean }
+  reminderSchedule: { sevenDays: boolean; oneDay: boolean; overdue: boolean }
   threshold: number
+  removedLines: RemovedLine[]
+  /** Reviewer decisions on derived daily-hours flags, keyed by flag id. */
+  dailyFlagState: Record<string, { status: FlagStatus; note?: string }>
+  heldRows: HeldRow[]
+  notifications: Notification[]
+  invoiceDates: Record<string, { approvedAt?: string; sentAt?: string }>
+  ai: { autoClear: boolean; lastCleared?: string }
 }
 
 export const firm = 'Hartwell & Knox Forensic Advisory'
@@ -112,6 +160,7 @@ const projects: Project[] = [
     code: '2025-018',
     type: 'Forensic accounting',
     contact: 'Amina Hassan',
+    email: 'ap@montrose.example',
     address: '380 North LaSalle Street, Chicago, IL 60654',
     people: ['Vanessa Hart', 'Nora Chen', 'Ryan Cole'],
     reviewer: 'Vanessa Hart',
@@ -125,6 +174,7 @@ const projects: Project[] = [
     code: '2025-019',
     type: 'Transaction advisory',
     contact: 'Julia Park',
+    email: 'finance@aster.example',
     address: '110 King Street, San Francisco, CA 94107',
     people: ['Vanessa Hart', 'Nora Chen'],
     reviewer: 'Vanessa Hart',
@@ -139,6 +189,7 @@ const projects: Project[] = [
     code: '2025-021',
     type: 'Consulting',
     contact: 'Theo Martin',
+    email: 'billing@northstar.example',
     address: '44 Madison Avenue, New York, NY 10010',
     people: ['Vanessa Hart', 'Ryan Cole'],
     reviewer: 'Vanessa Hart',
@@ -156,16 +207,18 @@ const e = (
   rate: number,
   description: string,
   source: Entry['source'],
-): Entry => ({ id, date, employee, projectId, hours, rate, description, billable: true, status: 'Submitted', source })
+  sourceRef?: string,
+): Entry => ({ id, date, employee, projectId, hours, rate, description, billable: true, status: 'Submitted', source, sourceRef })
 
+// Spreadsheet rows are synthetic demo references (spec item 9 example: "Ryan_May.xlsx, row 14").
 const entries: Entry[] = [
-  e('e1', '2025-05-14', 'Nora Chen', 'montrose', 1.2, 620, 'Prepared client strategy schedules', 'Excel'),
-  e('e2', '2025-05-16', 'Ryan Cole', 'montrose', 20, 465, 'Emails and follow up', 'Excel'),
-  e('e3', '2025-05-18', 'Ryan Cole', 'montrose', 0.8, 465, 'Reconciled revenue schedule', 'Excel'),
+  e('e1', '2025-05-14', 'Nora Chen', 'montrose', 1.2, 620, 'Prepared client strategy schedules', 'Excel', 'Nora_May_part1.xlsx, row 6'),
+  e('e2', '2025-05-16', 'Ryan Cole', 'montrose', 20, 465, 'Emails and follow up', 'Excel', 'Ryan_May.xlsx, row 14'),
+  e('e3', '2025-05-18', 'Ryan Cole', 'montrose', 0.8, 465, 'Reconciled revenue schedule', 'Excel', 'Ryan_May.xlsx, row 16'),
   e('e4', '2025-05-21', 'Nora Chen', 'montrose', 8.5, 620, 'Drafting', 'Direct'),
   e('e5', '2025-05-22', 'Vanessa Hart', 'montrose', 4.2, 850, 'Reviewed damages model and methodology', 'Direct'),
-  e('e6', '2025-05-13', 'Nora Chen', 'aster', 9.3, 620, 'Prepared quality of earnings schedules', 'Excel'),
-  e('e7', '2025-05-09', 'Ryan Cole', 'northstar', 6.6, 465, 'Built back-pay model and payroll tie-out', 'Excel'),
+  e('e6', '2025-05-13', 'Nora Chen', 'aster', 9.3, 620, 'Prepared quality of earnings schedules', 'Excel', 'Nora_May_part1.xlsx, row 4'),
+  e('e7', '2025-05-09', 'Ryan Cole', 'northstar', 6.6, 465, 'Built back-pay model and payroll tie-out', 'Excel', 'Ryan_May.xlsx, row 8'),
 ]
 
 const flags: Flag[] = [
@@ -199,13 +252,21 @@ export function initialStore(): Store {
     entries,
     flags,
     messages: [],
-    invoiceStatus: { montrose: 'In review', aster: 'Ready to approve', northstar: 'Draft' },
+    // Aster carries a daily-hours flag (9.3h on May 13 > 8h), so it starts in review.
+    invoiceStatus: { montrose: 'In review', aster: 'In review', northstar: 'Draft' },
     submissions: {
       'Vanessa Hart': 'Submitted',
       'Nora Chen': 'Submitted',
       'Ryan Cole': 'Due soon',
       'Maya Singh': 'Overdue',
       'Eli Brooks': 'Submitted',
+    },
+    lastSubmitted: {
+      'Vanessa Hart': '2025-05-29',
+      'Nora Chen': '2025-05-29',
+      'Ryan Cole': '2025-05-29',
+      'Maya Singh': '2025-04-30',
+      'Eli Brooks': '2025-05-29',
     },
     reminderLog: [
       '24-hour reminder scheduled for Ryan Cole',
@@ -217,13 +278,23 @@ export function initialStore(): Store {
       'Tally prepared three draft invoices',
       'Tally flagged two Montrose entries for review',
     ],
-    rates: { 'Vanessa Hart': 850, 'Nora Chen': 620, 'Ryan Cole': 465, 'Maya Singh': 390, 'Eli Brooks': 350 },
+    rates: { 'Vanessa Hart': 850, 'Nora Chen': 620, 'Ryan Cole': 465, 'Maya Singh': 410, 'Eli Brooks': 380 },
+    scheduledRates: {},
     reminderChannels: { inApp: true, email: false },
-    threshold: 12,
+    reminderSchedule: { sevenDays: true, oneDay: true, overdue: true },
+    threshold: 8,
+    removedLines: [],
+    dailyFlagState: {},
+    heldRows: [],
+    notifications: [],
+    invoiceDates: {},
+    ai: { autoClear: true },
   } satisfies Store)
 }
 
 /* ---------- Derived values ---------- */
+
+export const formatHours = (hours: number) => hours.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 })
 
 export const money = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n)
@@ -237,43 +308,138 @@ export const initials = (name: string) =>
     .map((x) => x[0])
     .join('')
 
-const isOpen = (f: Flag) => f.status !== 'Resolved' && f.status !== 'Dismissed'
+export const isOpen = (f: Flag) => f.status !== 'Resolved' && f.status !== 'Dismissed'
 
-export const invoiceTotal = (s: Store, projectId: string) =>
-  s.entries.filter((x) => x.projectId === projectId && x.billable).reduce((n, x) => n + x.hours * x.rate, 0)
+const shortDate = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+
+/**
+ * Daily-hours flags (spec item 5): any person-day whose total across all projects exceeds the threshold.
+ * Derived on every render so changing the threshold re-flags immediately. The flag sits on that day's
+ * largest entry. Days already covered by an "Unusually high hours" flag are skipped.
+ */
+export function dailyFlags(s: Store): Flag[] {
+  const days = new Map<string, Entry[]>()
+  s.entries.forEach((e) => days.set(`${e.employee}|${e.date}`, [...(days.get(`${e.employee}|${e.date}`) ?? []), e]))
+  const flags: Flag[] = []
+  days.forEach((list, key) => {
+    const total = Math.round(list.reduce((n, e) => n + e.hours, 0) * 100) / 100
+    if (total <= s.threshold) return
+    const top = [...list].sort((a, b) => b.hours - a.hours)[0]
+    if (s.flags.some((f) => f.entryId === top.id && f.type === 'Unusually high hours')) return
+    const [person, date] = key.split('|')
+    const first = person.split(' ')[0]
+    const id = `daily-${person}-${date}`
+    const state = s.dailyFlagState[id]
+    flags.push({
+      id,
+      entryId: top.id,
+      kind: 'daily',
+      type: 'Daily hours',
+      title: `${formatHours(total)} hours on ${shortDate(date)}, above your firm's ${s.threshold}-hour limit`,
+      noticed: `${first}'s entries on ${shortDate(date)} add up to ${formatHours(total)} hours across all projects.`,
+      why: `Your firm checks any day above ${s.threshold} hours before it reaches a client invoice.`,
+      suggestion: `Keep it with a note, edit the hours, or ask ${first}`,
+      impact: 0,
+      status: state?.status ?? 'Open',
+      note: state?.note,
+    })
+  })
+  return flags
+}
+
+export const allFlags = (s: Store) => [...s.flags, ...dailyFlags(s)]
+
+/** Set a flag's status whether it is stored (s.flags) or derived (daily). Call inside update(). */
+export function setFlagStatus(s: Store, flagId: string, status: FlagStatus, note?: string) {
+  const stored = s.flags.find((f) => f.id === flagId)
+  if (stored) {
+    stored.status = status
+    if (note) stored.note = note
+  } else s.dailyFlagState[flagId] = { status, note: note ?? s.dailyFlagState[flagId]?.note }
+}
+
+/** Invoice line items: the project's billable entries, by date then employee last name (spec item 2). */
+export const invoiceLines = (s: Store, projectId: string) =>
+  s.entries
+    .filter((e) => e.projectId === projectId && e.billable)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.employee.split(' ').at(-1)!.localeCompare(b.employee.split(' ').at(-1)!))
+
+export const lineAmount = (e: Entry) => (e.noCharge ? 0 : e.hours * e.rate)
+
+export const invoiceTotal = (s: Store, projectId: string) => invoiceLines(s, projectId).reduce((n, e) => n + lineAmount(e), 0)
+
+/** Reviewer changes on this invoice: edited, no-charge and removed lines, with the net change in dollars. */
+export function invoiceAdjustments(s: Store, projectId: string) {
+  const edited = invoiceLines(s, projectId).filter((e) => e.review)
+  const removed = s.removedLines.filter((r) => r.entry.projectId === projectId)
+  const net =
+    edited.reduce((n, e) => {
+      const o = e.review!.original
+      return n + lineAmount(e) - (o.noCharge ? 0 : o.hours * o.rate)
+    }, 0) - removed.reduce((n, r) => n + lineAmount(r.entry), 0)
+  return { count: edited.length + removed.length, net }
+}
+
+/** Snapshot an entry's values before its first reviewer change. Call inside update(). */
+export function snapshotForReview(entry: Entry, by: string) {
+  entry.review ??= { by, original: { hours: entry.hours, description: entry.description, rate: entry.rate, noCharge: Boolean(entry.noCharge) } }
+}
+
+export const sourceOf = (e: Entry) => e.sourceRef ?? (e.source === 'Direct' ? `Direct entry, ${shortDate(e.date)}` : 'Excel import')
 
 export const openFlagsFor = (s: Store, projectId: string) =>
-  s.flags.filter((f) => isOpen(f) && s.entries.find((x) => x.id === f.entryId)?.projectId === projectId)
+  allFlags(s).filter((f) => isOpen(f) && s.entries.find((x) => x.id === f.entryId)?.projectId === projectId)
 
-export const entryIsFlagged = (s: Store, entryId: string) => s.flags.some((f) => f.entryId === entryId && isOpen(f))
+export const entryIsFlagged = (s: Store, entryId: string) => allFlags(s).some((f) => f.entryId === entryId && isOpen(f))
+
+/** A draft invoice still waits on time; every other status has its time in (Figma: Coleman "Time missing"). */
+export const completeness = (s: Store, projectId: string) => (s.invoiceStatus[projectId] === 'Draft' ? 'Time missing' : 'Complete')
+
+/** People whose timesheet is overdue (Figma: "01 timesheet missing", "Maya is overdue"). */
+export const overduePeople = (s: Store) => Object.keys(s.submissions).filter((p) => s.submissions[p] === 'Overdue')
+
+/** Whole days from the pinned demo date to a yyyy-mm-dd date. */
+export const daysFromToday = (iso: string) => Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${demoToday}T00:00:00Z`)) / 86400000)
 
 /** Invoices that still need Vanessa's attention (drives "Review N invoices"). */
 export const invoicesNeedingReview = (s: Store) =>
   Object.values(s.invoiceStatus).filter((x) => x === 'In review' || x === 'Ready to approve' || x === 'Awaiting employee').length
 
-/** The demo spreadsheet behind "Select demo file" (Figma 36:3871). */
+/** The demo spreadsheet behind "Select demo file" (Figma 36:3871; second row added for spec item 3). */
 export const demoImport = {
   fileName: 'Nora_May.xlsx',
-  rows: [
-    { column: 'Work date', field: 'Date', sample: 'May 27, 2025', certain: true },
-    { column: 'Matter', field: 'Project', sample: 'Aster Labs Acq.', certain: false },
-    { column: 'Hrs', field: 'Hours', sample: '2.0', certain: true },
-    { column: 'Task / Notes', field: 'Description', sample: 'Reviewed acquisition schedules', certain: true },
+  employee: 'Nora Chen',
+  columns: [
+    { column: 'Work date', field: 'Date', sample: 'May 27, 2025' },
+    { column: 'Matter', field: 'Project', sample: 'Aster Labs Acq.' },
+    { column: 'Hrs', field: 'Hours', sample: '2.0' },
+    { column: 'Task / Notes', field: 'Description', sample: 'Reviewed acquisition schedules' },
   ],
-  entry: {
-    date: '2025-05-27',
-    employee: 'Nora Chen',
-    projectId: 'aster',
-    hours: 2,
-    rate: 620,
-    description: 'Reviewed acquisition schedules',
+  /** Synthetic rows. "suggest" = uncertain match Tally proposes; null = no matching project. */
+  rows: [
+    { row: 2, date: '2025-05-27', matter: 'Aster Labs Acq.', suggest: 'aster' as string | null, hours: 2, description: 'Reviewed acquisition schedules' },
+    { row: 3, date: '2025-05-28', matter: 'Henley Arbitration', suggest: null as string | null, hours: 3.5, description: 'Reviewed arbitration exhibits' },
+  ],
+}
+
+/** Turn an imported or held row into a submitted time entry. Call inside update(). */
+export function entryFromRow(s: Store, row: { date: string; hours: number; description: string; employee: string; file: string; row?: number }, projectId: string, id: string): Entry {
+  return {
+    id,
+    date: row.date,
+    employee: row.employee,
+    projectId,
+    hours: row.hours,
+    rate: s.rates[row.employee],
+    description: row.description,
     billable: true,
     status: 'Submitted',
     source: 'Excel',
-  } satisfies Omit<Entry, 'id'>,
+    sourceRef: row.row ? `${row.file}, row ${row.row}` : row.file,
+    submittedAt: demoToday,
+  }
 }
 
-export const formatHours = (hours: number) => hours.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 })
 
 export const projectName = (s: Store, projectId: string) => s.projects.find((p) => p.id === projectId)?.name ?? 'Unknown project'
 
@@ -282,7 +448,9 @@ export const displayStatus = (s: Store, entry: Entry): DisplayStatus =>
   entryIsFlagged(s, entry.id) ? 'Flagged' : entry.status === 'Updated after submission' ? 'Updated' : entry.status
 
 /** Entries on approved/exported invoices can no longer be edited or deleted. */
-export const entryIsLocked = (s: Store, entry: Entry) => ['Approved', 'Exported'].includes(s.invoiceStatus[entry.projectId])
+export const entryIsLocked = (s: Store, entry: Entry) => ['Approved', 'Exported', 'Sent'].includes(s.invoiceStatus[entry.projectId])
+
+export const isFinal = (status: InvoiceStatus) => status === 'Approved' || status === 'Exported' || status === 'Sent'
 
 /* ---------- Time entry validation (ported from the prototype code layer) ---------- */
 

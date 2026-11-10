@@ -65,7 +65,7 @@ export function TimeEntryForm({ initialProjectId, onSaved }: { initialProjectId?
         save(submitter?.value !== 'draft')
       }}
       aria-labelledby="new-entry"
-      className="rounded-16 border border-line bg-surface p-5"
+      className="rounded-lg border border-line bg-surface shadow-card p-5"
     >
       <SectionHeading id="new-entry" title="New time entry" description="Choose from assigned projects to keep names consistent." />
       <div className="pt-2.5">
@@ -99,8 +99,13 @@ export function TimeEntryForm({ initialProjectId, onSaved }: { initialProjectId?
 
       <div className="pt-4">
         <div className="flex items-center gap-2 border-t border-line-footer pt-3.5">
-          <p className="flex-1 text-8 text-ink-muted">
-            Rate applied by work date: <b className="font-bold">{money(store.rates[me.name])}/hr</b>
+          {/* Employees don't see rates or amounts (spec: employee view check). */}
+          <p className="flex-1 text-caption text-ink-muted">
+            {role === 'partner' && (
+              <>
+                Rate applied by work date: <b className="font-semibold">{money(store.rates[me.name])}/hr</b>
+              </>
+            )}
           </p>
           <OutlineButton type="submit" value="draft">
             Save draft

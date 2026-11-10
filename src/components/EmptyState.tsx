@@ -8,9 +8,11 @@ import { Icon } from './Icon'
 export function EmptyState({ icon, iconSize, title, children, size = 'lg' }: { icon: string; iconSize: number; title: string; children?: ReactNode; size?: 'sm' | 'lg' }) {
   return (
     <div className="flex flex-col items-center px-6.25 py-17.5 text-center text-ink-empty">
-      <Icon name={icon} size={iconSize} />
-      {size === 'lg' ? <h2 className="text-14">{title}</h2> : <b className="pt-2.25 text-8 font-bold">{title}</b>}
-      {children && <p className={`text-8 ${size === 'sm' ? 'text-ink-muted' : ''}`}>{children}</p>}
+      <span className="mb-4 grid size-14 place-items-center rounded-lg bg-brand-50">
+        <Icon name={icon} size={iconSize} />
+      </span>
+      {size === 'lg' ? <h2 className="text-lead font-semibold text-ink">{title}</h2> : <b className="text-body font-semibold text-ink">{title}</b>}
+      {children && <p className="max-w-90 pt-1 text-small text-ink-muted">{children}</p>}
     </div>
   )
 }

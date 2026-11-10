@@ -5,15 +5,15 @@ import { initials, people, type Submission } from '../../data/store'
 const TONE: Record<Submission, PillTone> = { Submitted: 'success', 'Due soon': 'accent', Overdue: 'danger' }
 // Column widths from Figma (36:7802): 242.77 / 161.85 / 131.51 / 121.39 / 161.85 / 141.62 px.
 const COLS = ['25.3%', '16.8%', '13.7%', '12.6%', '16.8%', '14.8%']
-const TH = 'h-8.75 text-left align-middle text-7 font-normal tracking-th text-ink-th uppercase'
-const TD = 'h-14.5 border-t border-line-row align-middle text-9 text-ink'
+const TH = 'h-8.75 text-left align-middle text-caption font-normal tracking-th text-ink-th uppercase'
+const TD = 'h-14.5 border-t border-line-row align-middle text-small text-ink'
 
 /** Team submission table (Figma 36:7801). */
 export function TeamTable() {
   const { store, update } = useDemo()
 
   return (
-    <div className="mt-3.75 overflow-hidden rounded-14 border border-line bg-surface">
+    <div className="mt-3.75 overflow-hidden rounded-lg border border-line bg-surface shadow-card">
       <table className="w-full table-fixed border-collapse">
         <colgroup>
           {COLS.map((w, i) => (
@@ -37,16 +37,18 @@ export function TeamTable() {
             const status = store.submissions[p]
             const submitted = status === 'Submitted'
             return (
-              <tr key={p}>
+              <tr key={p} className="transition-colors duration-150 hover:bg-brand-25">
                 <th scope="row" className={`${TD} pl-4 text-left`}>
                   <span className="flex items-center gap-2">
-                    <span className="grid size-7 place-items-center rounded-full bg-teammate text-7 font-normal" aria-hidden="true">
+                    <span className="grid size-7 place-items-center rounded-full bg-teammate text-caption font-normal" aria-hidden="true">
                       {initials(p)}
                     </span>
-                    <b className="font-bold">{p}</b>
+                    <b className="font-semibold">{p}</b>
                   </span>
                 </th>
-                <td className={TD}>{p === 'Maya Singh' ? 'Apr 30' : 'May 29'}</td>
+                <td className={TD}>
+                  {new Date(`${store.lastSubmitted[p]}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
+                </td>
                 <td className={TD}>
                   <Pill tone={TONE[status]}>{status}</Pill>
                 </td>
@@ -62,7 +64,7 @@ export function TeamTable() {
                         s.reminderLog.unshift(`Manual in-app reminder sent to ${p} just now`)
                       })
                     }
-                    className="rounded-10 text-8 text-link hover:underline focus-visible:outline-2 focus-visible:outline-dark disabled:opacity-30 disabled:hover:no-underline"
+                    className="inline-flex h-8 items-center rounded-sm px-2.5 text-small font-semibold text-link transition-colors hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-accent disabled:bg-transparent disabled:font-normal disabled:text-ink-divider"
                   >
                     Send reminder
                   </button>

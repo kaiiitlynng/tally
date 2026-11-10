@@ -44,9 +44,9 @@ export function projectProgress(s: Store, project: Project, person: string) {
       status === 'Submitted'
         ? latest
           ? `Submitted ${tableDate(latest)}`
-          : `Submitted — ${formatHours(hours)} hours recorded`
+          : `Submitted: ${formatHours(hours)} hours recorded`
         : status === 'Draft'
-          ? `Draft — ${formatHours(hours)} hours recorded`
+          ? `Draft: ${formatHours(hours)} hours recorded`
           : status === 'Needs correction'
             ? `${plural(corrections, 'correction')} requested`
             : status === 'Overdue'

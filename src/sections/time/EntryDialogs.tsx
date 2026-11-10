@@ -4,7 +4,7 @@ import { uid, useDemo } from '../../components/DemoContext'
 import { Icon } from '../../components/Icon'
 import { Dialog, Modal } from '../../components/Modal'
 import { useCommitEntry } from '../../hooks/useCommitEntry'
-import { entryWarnings, validateEntry, type Entry, type EntryForm, type EntryWarning, type FormErrors } from '../../data/store'
+import { entryWarnings, isFinal, validateEntry, type Entry, type EntryForm, type EntryWarning, type FormErrors } from '../../data/store'
 import { EntryFields, focusFirstError } from './EntryFields'
 import { WarningConfirm } from './WarningConfirm'
 
@@ -84,11 +84,11 @@ export function EditEntryDialog({ entry, onClose, onSaved, onLocked }: { entry: 
 
 function CenteredDialog({ icon, iconTile, title, children, actions, onClose }: { icon: string; iconTile: string; title: string; children: React.ReactNode; actions: React.ReactNode; onClose: () => void }) {
   return (
-    <Dialog labelledBy="centered-dialog-title" onClose={onClose} className="w-107.5 rounded-20 p-7.5 text-center">
+    <Dialog labelledBy="centered-dialog-title" onClose={onClose} className="w-110 rounded-xl p-8 text-center">
       <span className={`mx-auto mb-3.25 grid size-11 place-items-center rounded-full ${iconTile}`}>
         <Icon name={icon} size={18} />
       </span>
-      <h2 id="centered-dialog-title" className="mb-1.75 text-21 font-medium">
+      <h2 id="centered-dialog-title" className="mb-1.75 text-title tracking-title font-semibold">
         {title}
       </h2>
       {children}
@@ -103,7 +103,7 @@ export function DeleteEntryDialog({ entry, onClose, onDeleted, onLocked }: { ent
 
   function confirm() {
     const status = store.invoiceStatus[entry.projectId]
-    if (status === 'Approved' || status === 'Exported') return onLocked()
+    if (isFinal(status)) return onLocked()
     update((s) => {
       s.entries = s.entries.filter((e) => e.id !== entry.id)
       s.flags = s.flags.filter((f) => f.entryId !== entry.id)
@@ -140,17 +140,17 @@ export function DeleteEntryDialog({ entry, onClose, onDeleted, onLocked }: { ent
           <button
             type="button"
             onClick={confirm}
-            className="h-9.5 rounded-20 bg-delete px-4 text-9 font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-delete"
+            className="h-10 rounded-sm bg-delete px-4 text-body font-semibold text-white shadow-card transition-shadow hover:shadow-hover active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-delete"
           >
             Delete entry
           </button>
         </>
       }
     >
-      <p className="text-9 leading-[1.55] text-ink-muted">This will remove it from your submitted hours.</p>
-      <div className="mt-4.25 rounded-10 bg-filter-panel p-3 text-left">
-        <b className="block text-9 font-bold">{entry.description}</b>
-        <small className="mt-1 block text-7 text-ink-muted">
+      <p className="text-small text-ink-muted">This will remove it from your submitted hours.</p>
+      <div className="mt-4.25 rounded-md bg-filter-panel p-3 text-left">
+        <b className="block text-small font-semibold">{entry.description}</b>
+        <small className="mt-1 block text-caption text-ink-muted">
           {entry.date} · {entry.hours} hours · {entry.source === 'Excel' ? 'Excel import' : 'Direct entry'}
         </small>
       </div>
@@ -196,7 +196,7 @@ export function LockedEntryDialog({ entry, onClose, onSent }: { entry: Entry; on
         </>
       }
     >
-      <p className="text-9 leading-[1.55] text-ink-muted">
+      <p className="text-small text-ink-muted">
         This entry is part of an approved or exported invoice, so its billing record cannot be changed or deleted here. Ask Vanessa to create an adjustment.
       </p>
     </CenteredDialog>

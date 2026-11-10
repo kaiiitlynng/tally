@@ -10,10 +10,12 @@ export function Toast({ message, onDone }: { message: string; onDone: () => void
   }, [message, onDone])
 
   return (
-    <div aria-live="polite" className="pointer-events-none fixed top-18.5 right-8 z-45">
+    <div aria-live="polite" className="pointer-events-none fixed top-20 right-8 z-45">
       {message && (
-        <div role="status" className="flex items-center gap-2 rounded-11 border border-done-line bg-banner px-3.5 py-2.75 text-9 text-banner-ink shadow-toast">
-          <Icon name="check-toast" size={18} />
+        <div key={message} role="status" className="flex animate-toast items-center gap-2.5 rounded-md bg-banner px-4 py-3 text-body font-medium text-banner-ink shadow-toast">
+          <span className="grid size-6 place-items-center rounded-full bg-success-soft">
+            <Icon name="check-toast" size={14} />
+          </span>
           {message}
         </div>
       )}

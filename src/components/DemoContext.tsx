@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { currentPeriod, initialStore, users, type BillingPeriod, type Role, type Store } from '../data/store'
 
 interface DemoState {
@@ -16,6 +16,10 @@ interface DemoState {
   /** Changes on every "Reset demo"; the shell keys pages off it to drop their local state. */
   resetKey: number
   reset: () => void
+  /** App-wide success toast (rendered once by the shell). */
+  toast: (message: string) => void
+  toastMessage: string
+  clearToast: () => void
 }
 
 const DemoContext = createContext<DemoState | null>(null)
@@ -26,6 +30,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>('partner')
   const [period, setPeriod] = useState<BillingPeriod>(currentPeriod)
   const [resetKey, setResetKey] = useState(0)
+  const [toastMessage, setToastMessage] = useState('')
+  const clearToast = useCallback(() => setToastMessage(''), [])
 
   const value: DemoState = {
     store,
@@ -46,7 +52,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       setRole('partner')
       setPeriod(currentPeriod)
       setResetKey((k) => k + 1)
+      setToastMessage('')
     },
+    toast: setToastMessage,
+    toastMessage,
+    clearToast,
   }
 
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>

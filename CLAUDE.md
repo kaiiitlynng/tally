@@ -4,6 +4,9 @@
 Recreate the Tally website (Ramp Hackathon) from its Figma design as a production-quality, responsive site.
 Source of truth: the Figma file, read through the Figma MCP server. Don't guess at a value you can read from Figma.
 
+**Visual style override (2026-11-09):** the owner restyled the app to the light variant of `stripe-design/` (see `stripe-design/SKILL.md` and its screenshot). Layout, structure, copy and behavior still come from Figma and the code layer; **colors, radii, shadows and tag/nav styling come from stripe-design** via `src/styles/tokens.css`. Fonts stay DM Sans + Doto (owner's choice; the bundled Söhne files are not used). `reference/*.png` screenshots now differ in color on purpose.
+Second pass (2026-11-09): type and radius tokens are now **semantic**, not Figma-px. Type: `text-caption` 12 / `small` 13 / `body` 14 / `lead` 16 / `title-sm` 18 / `title` 22 / `title-lg` 28 / `display` 36 (12px floor for accessibility; Figma's 6–11px copy maps up). Radii: `rounded-xs` 4 / `sm` 6 (buttons, inputs, nav) / `md` 8 / `lg` 12 (cards) / `xl` 16 (modals, hero) / `pill`. Motion utilities in tokens.css: `stagger`, `card-lift`, `animate-rise|pop|slide-in|toast|grow|ribbon`, `ribbon` / `ribbon-rim` gradients. `<Icon tint>` renders an icon as a currentColor mask.
+
 Figma file: Tally - Ramp Hackathon
 - File key: `eWPRE9opW6vilWvEk4bOZB`
 - File URL: https://www.figma.com/design/eWPRE9opW6vilWvEk4bOZB/Tally---Ramp-Hackathon
@@ -34,9 +37,9 @@ Frame `37:15126` ("V3") is a desktop web-app prototype (1280px wide, no mobile f
 | Time Entries: import drop zone (36:3221 identical) | 36:1933 | src/sections/time/ImportDropzone.tsx (+ ParsingState.tsx, code layer) |
 | Time Entries: column mapping (36:4569 identical) | 36:3833 | src/sections/time/ColumnMapping.tsx |
 | Time Entries: all submitted time | 36:1365 | src/sections/time/SubmittedTimeTable.tsx |
-| Review Invoices: list | 36:5983 | src/pages/ReviewInvoices.tsx + src/components/InvoiceTable.tsx |
+| Ready for Review (was Review Invoices): list | 36:5983 | src/pages/ReviewInvoices.tsx + src/components/InvoiceTable.tsx |
 | Review Invoices: invoice review detail | 36:6409 | src/pages/InvoiceReview.tsx + src/sections/review/* |
-| Invoices (empty; library from code layer) | 36:7115 | src/pages/Invoices.tsx |
+| Approved & Sent (was Invoices) | 36:7115 | src/pages/Invoices.tsx |
 | Messages (empty; threads from code layer) | 36:7405 | src/pages/Messages.tsx |
 | Team & Reminders (36:9120 same layout) | 36:7718 | src/pages/TeamReminders.tsx + src/sections/team/* |
 | Team & Reminders: Request time now modal | 36:8726 | src/components/Modal.tsx (used in TeamReminders.tsx) |
@@ -54,6 +57,20 @@ Behaviour/copy for states with no frame (flags 2+, approval, modals, invoice lib
 | Employee sidebar | 36:11564 | src/components/Sidebar.tsx |
 
 Added from the code layer (no frames): New Project 3-step modal (src/sections/clients/NewProjectModal.tsx), entry filters/sort/search + chips (src/sections/time/EntriesToolbar.tsx), entry validation & soft warnings (src/data/store.ts), employee row menu Edit/Delete + locked-invoice dialog (src/sections/time/EntryDialogs.tsx), month picker (src/components/MonthPicker.tsx), employee correction reply in Messages.
+
+**Spec v2 features (no frames; built from the written spec, 2026-11-09)**
+| Feature | Component file |
+|---|---|
+| Inline edit / no charge / delete on invoice lines, adjustments line, "Edited by" marker, line source | src/sections/review/InvoiceDocument.tsx |
+| Tie-out card | src/sections/review/TieOutCard.tsx |
+| Daily-hours flags (derived from threshold), Keep as is / Edit hours / Ask employee | src/data/store.ts `dailyFlags`, src/pages/InvoiceReview.tsx |
+| Send to client email preview, Approved & Sent page | src/sections/review/SendInvoiceModal.tsx, src/pages/Invoices.tsx |
+| Notification bell + "invoices ready" trigger | src/components/NotificationBell.tsx, src/sections/team/SubmissionStats.tsx |
+| Unrecognized case flow (import rows, held rows, Needs attention actions) | src/sections/time/ColumnMapping.tsx, src/sections/home/HeldRowItem.tsx |
+| Threshold presets, 2026 rate schedule | src/pages/Settings.tsx, src/sections/settings/ScheduleRatesDrawer.tsx |
+| Custom time request + reminder chips | src/sections/team/RequestTimeModal.tsx |
+| AI processing card (clear working data) | src/pages/Settings.tsx `AiProcessingCard` |
+| Sortable entry columns (default date, then last name) | src/sections/time/EntriesSection.tsx |
 
 Shared: sidebar (e.g. 36:289), header (e.g. 36:12).
 
