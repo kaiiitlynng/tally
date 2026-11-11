@@ -3,19 +3,20 @@ import { DarkButton, OutlineButton } from '../../components/Button'
 import { uid, useDemo } from '../../components/DemoContext'
 import { Field, Select, TextArea, TextInput } from '../../components/Field'
 import { FieldMessage } from '../../components/Field'
-import { Disclaimer, Modal } from '../../components/Modal'
-import { demoToday } from '../../data/store'
+import { Modal } from '../../components/Modal'
+import { demoToday, notify } from '../../data/store'
 
 const longDate = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 
 /** "Request time now" (Figma 36:8726, extended by spec item 7): recipients, cut-off date, preview, send in-app. */
-export function RequestTimeModal({ onClose }: { onClose: () => void }) {
+/** `initialRecipients` (Manage Team's "Remind n people") starts with everyone outstanding, across all projects. */
+export function RequestTimeModal({ onClose, initialRecipients }: { onClose: () => void; initialRecipients?: string[] }) {
   const { store, update, me } = useDemo()
   const team = store.team.filter((m) => m.name !== me.name).map((m) => m.name)
-  const [projectId, setProjectId] = useState(store.projects[0]?.id ?? 'all')
+  const [projectId, setProjectId] = useState(initialRecipients ? 'all' : (store.projects[0]?.id ?? 'all'))
   const defaults = (id: string) => (id === 'all' ? team : (store.projects.find((p) => p.id === id)?.people.filter((p) => team.includes(p)) ?? []))
   const template = (id: string) => (id === 'all' ? 'Please submit all time through today.' : `${store.projects.find((p) => p.id === id)?.name} has settled. Please submit all time through today.`)
-  const [recipients, setRecipients] = useState<string[]>(() => defaults(projectId))
+  const [recipients, setRecipients] = useState<string[]>(() => initialRecipients ?? defaults(projectId))
   const [through, setThrough] = useState(demoToday)
   const [message, setMessage] = useState(() => template(projectId))
   const [edited, setEdited] = useState(false)
@@ -44,6 +45,8 @@ export function RequestTimeModal({ onClose }: { onClose: () => void }) {
           replies: [],
         }),
       )
+      recipients.forEach((to) => notify(s, to, `${me.firstName} asked you to submit time through ${longDate(through)}`, '/messages', 'reminder'))
+      recipients.forEach((to) => (s.lastReminded[to] = demoToday))
       s.reminderLog.unshift(`Time request sent in-app to ${recipients.join(', ')}`)
     })
     onClose()
@@ -127,7 +130,6 @@ export function RequestTimeModal({ onClose }: { onClose: () => void }) {
               }}
             />
           </Field>
-          <Disclaimer>Sends an in-app request. Email is only simulated when enabled.</Disclaimer>
         </div>
       ) : (
         <div className="mt-3 flex flex-col gap-3 text-small">

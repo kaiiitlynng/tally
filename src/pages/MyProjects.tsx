@@ -37,7 +37,7 @@ export default function MyProjects() {
 
   return (
     <>
-      <PageTitle title="My Projects" description="View your projects and manage your timesheets." />
+      <PageTitle title="My Projects" />
 
       <SegmentedTabs label="Project history" tabs={PROJECT_TABS} value={tab} onChange={setTab} idPrefix="my-projects" className="mt-4" />
 
@@ -67,7 +67,7 @@ export default function MyProjects() {
                   <>
                     <div className="mt-4.25 grid grid-cols-2 gap-2.5 border-y border-card-rule py-3.25">
                       <div>
-                        <small className={META}>SUBMISSION STATUS</small>
+                        <small className={META}>Status</small>
                         <button
                           type="button"
                           disabled={!progress.corrections}
@@ -80,21 +80,21 @@ export default function MyProjects() {
                         </button>
                       </div>
                       <div className="border-l border-card-rule pl-3">
-                        <small className={META}>TIMESHEET DUE</small>
+                        <small className={META}>Timesheet due</small>
                         <b className="block pt-1.5 text-body font-semibold">{progress.dueLabel}</b>
                       </div>
                     </div>
-                    <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
-                      <DarkButton leadingIcon="plus-white-sm" iconSize={14} onClick={() => toTime(p.id, 'log')}>
+                    <div className="mt-auto flex gap-2 pt-4">
+                      <DarkButton className="w-40" leadingIcon="plus-white-sm" iconSize={14} onClick={() => toTime(p.id, 'log')}>
                         Log hours
                       </DarkButton>
-                      <OutlineButton onClick={() => toTime(p.id, 'entries')}>
+                      <OutlineButton className="w-40" onClick={() => toTime(p.id, 'entries')}>
                         View entries
                       </OutlineButton>
                     </div>
                     <footer className="mt-3.5 flex items-center justify-between border-t border-card-foot pt-3.25">
                       <div>
-                        <small className="block text-caption tracking-meta text-ink-meta-soft">BILLING REVIEWER</small>
+                        <small className="block text-caption tracking-meta text-ink-meta-soft">Reviewer</small>
                         <b className="block pt-1 text-body font-semibold">{p.reviewer}</b>
                       </div>
                       <div className="flex items-center gap-2.25">
@@ -105,7 +105,6 @@ export default function MyProjects() {
                             </li>
                           ))}
                         </ul>
-                        <small className="pl-1.25 text-caption text-ink-meta-soft">{p.people.length} team members</small>
                       </div>
                     </footer>
                   </>
@@ -113,17 +112,17 @@ export default function MyProjects() {
                   <>
                     <div className="mt-4.25 grid grid-cols-[122fr_152fr_152fr] gap-3 border-y border-card-rule py-3.5">
                       <div>
-                        <small className={META}>PROJECT STATUS</small>
+                        <small className={META}>Status</small>
                         <div className="pt-1.5">
                           <Pill tone="neutral">{p.status}</Pill>
                         </div>
                       </div>
                       <div className="border-l border-card-rule pl-3">
-                        <small className={META}>COMPLETED</small>
+                        <small className={META}>Completed</small>
                         <b className="block pt-1.75 text-caption font-semibold">{p.completedDate ? tableDate(p.completedDate) : 'Date not recorded'}</b>
                       </div>
                       <div className="border-l border-card-rule pl-3">
-                        <small className={META}>FINAL TIMESHEET</small>
+                        <small className={META}>Final timesheet</small>
                         <b className="block pt-1.75 text-caption font-semibold">{isArchived(p) || progress.submitted ? 'Submitted' : progress.status}</b>
                       </div>
                     </div>
@@ -131,7 +130,7 @@ export default function MyProjects() {
                       // Closed in an earlier cycle: its entries aren't in this demo, so no "View entries".
                       <p className="mt-4 text-small text-ink-muted">Last billed {lastBilled(p.id)?.label}</p>
                     ) : (
-                      <OutlineButton className="mt-4 w-full" onClick={() => toTime(p.id, 'entries')}>
+                      <OutlineButton className="mt-4 w-40" onClick={() => toTime(p.id, 'entries')}>
                         View entries
                       </OutlineButton>
                     )}

@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon'
 import { PageTitle } from '../components/PageTitle'
 import { Pill } from '../components/Pill'
 import { archivedInvoiceTotal, findArchivedInvoice, pastCycles, projectById } from '../data/history'
-import { invoiceTotal, isFinal, money, partner, periodLabel } from '../data/store'
+import { invoiceTotal, isFinal, money, periodLabel } from '../data/store'
 import { ArchivedInvoiceDocument, InvoiceDocument } from '../sections/review/InvoiceDocument'
 import { SendInvoiceModal } from '../sections/review/SendInvoiceModal'
 
@@ -52,10 +52,10 @@ export default function Invoices() {
 
   const exportButtons = (
     <>
-      <OutlineButton onClick={() => toast('Excel export prepared in the demo')} className="gap-2">
+      <OutlineButton onClick={() => toast('Excel exported (demo)')} className="gap-2">
         <Icon name="download-dark" size={18} /> Excel
       </OutlineButton>
-      <OutlineButton onClick={() => toast('PDF export prepared in the demo')} className="gap-2">
+      <OutlineButton onClick={() => toast('PDF exported (demo)')} className="gap-2">
         <Icon name="download-dark" size={18} /> PDF
       </OutlineButton>
     </>
@@ -63,7 +63,7 @@ export default function Invoices() {
 
   return (
     <>
-      <PageTitle title="Approved Invoices" description="Preview approved invoices, export files, and see invoice history." />
+      <PageTitle title="Approved Invoices" />
 
       <div className="mt-6 grid min-h-175 grid-cols-[320px_1fr] overflow-hidden rounded-lg border border-line bg-library shadow-card">
         <aside aria-label="Approved and sent invoices" className="overflow-y-auto border-r border-line bg-library-aside">
@@ -79,7 +79,7 @@ export default function Invoices() {
                   <span className="text-small font-semibold">{money(invoiceTotal(store, p.id))}</span>
                   <span className="col-span-2 flex items-center gap-1.5">
                     <Pill tone="success">{sent(p.id) ? 'Sent' : 'Approved'}</Pill>
-                    <small className="text-caption text-ink-muted">{sent(p.id) ? `Sent ${fmt(dates.sentAt)}` : `Approved ${fmt(dates.approvedAt)}`}</small>
+                    {!sent(p.id) && <small className="text-caption text-ink-muted">Approved {fmt(dates.approvedAt)}</small>}
                   </span>
                 </button>
               )
@@ -124,7 +124,7 @@ export default function Invoices() {
                         <span className="text-small font-semibold">{money(archivedInvoiceTotal(inv))}</span>
                         <span className="col-span-2 flex items-center gap-1.5">
                           <Pill tone={inv.status === 'Sent' ? 'success' : 'neutral'}>{inv.status}</Pill>
-                          <small className="text-caption text-ink-muted">{inv.sentAt ? `Sent ${fmt(inv.sentAt)}` : `Approved ${fmt(inv.approvedAt)}`}</small>
+                          {!inv.sentAt && <small className="text-caption text-ink-muted">Approved {fmt(inv.approvedAt)}</small>}
                         </span>
                       </button>
                     )
@@ -140,10 +140,8 @@ export default function Invoices() {
             <>
               <div className="mx-auto mb-3 flex max-w-160 items-center gap-2">
                 <div className="mr-auto">
-                  <b className="block text-small font-semibold">Invoice preview</b>
-                  <p className="pt-0.5 text-caption text-ink-muted">
-                    Approved by {partner.name}
-                    {sent(current.id) && ` · Sent to ${current.contact} on ${fmt(store.invoiceDates[current.id]?.sentAt)}`}
+                  <p className="text-caption text-ink-muted">
+                    {sent(current.id) && `Sent to ${current.contact} on ${fmt(store.invoiceDates[current.id]?.sentAt)}`}
                   </p>
                 </div>
                 {exportButtons}
@@ -157,9 +155,8 @@ export default function Invoices() {
             <>
               <div className="mx-auto mb-3 flex max-w-160 items-center gap-2">
                 <div className="mr-auto">
-                  <b className="block text-small font-semibold">Invoice preview</b>
-                  <p className="pt-0.5 text-caption text-ink-muted">
-                    {periodLabel(archived.period)} · Approved by {partner.name}
+                  <p className="text-caption text-ink-muted">
+                    {periodLabel(archived.period)}
                     {archived.invoice.sentAt && ` · Sent to ${projectById(store, archived.invoice.projectId)?.contact} on ${fmt(archived.invoice.sentAt)}`}
                   </p>
                 </div>
@@ -170,9 +167,7 @@ export default function Invoices() {
               </div>
             </>
           ) : (
-            <EmptyState icon="invoice-empty" iconSize={28} title="Select an approved invoice">
-              Preview and export options will appear here.
-            </EmptyState>
+            <EmptyState icon="invoice-empty" iconSize={28} title="Select an approved invoice" />
           )}
         </section>
       </div>

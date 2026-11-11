@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { DarkButton } from '../../components/Button'
 import { Icon } from '../../components/Icon'
-import { NEW_PROJECT_STEPS, NewProjectModal } from '../clients/NewProjectModal'
+import { NewProjectModal } from '../clients/NewProjectModal'
+import { ProjectsSnapshot } from './ProjectsSnapshot'
 import { ImportDropzone } from '../time/ImportDropzone'
 
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
 /**
- * Home's primary actions: importing timesheets (the main way time enters Tally) and creating a project.
+ * Home's primary actions: importing timesheets (the main way time enters Tally) and a projects snapshot.
  * Copy reuses Figma strings from Collect time (36:120), the Excel drop zone (36:1990) and Clients & Projects (36:738).
  */
 export function StartActions() {
@@ -29,7 +29,6 @@ export function StartActions() {
               <h2 id="start-import" className="text-title-sm font-semibold tracking-title text-ink">
                 Upload Excel files
               </h2>
-              <p className="pt-0.5 text-small text-ink-muted">Import one file or the whole team folder</p>
             </div>
           </div>
           <Link
@@ -43,38 +42,7 @@ export function StartActions() {
         <ImportDropzone bare onFile={() => navigate('/time?mode=import', { state: { importNow: true } })} />
       </section>
 
-      <section aria-labelledby="start-project" className="flex flex-col rounded-xl border border-hero-line bg-surface p-6 shadow-hero">
-        <div>
-          <div>
-            <h2 id="start-project" className="text-title-sm font-semibold tracking-title text-ink">
-              New Project
-            </h2>
-            <p className="pt-0.5 text-small text-ink-muted">Keep billing contacts, assignments, and project rules in one place.</p>
-          </div>
-        </div>
-
-        {/* Preview of the three-step New Project flow, so it is clear what creating a project involves. */}
-        <ol className="mt-5 flex flex-col gap-3">
-          {NEW_PROJECT_STEPS.map((title, i) => (
-            <li key={title} className="flex items-center gap-3 text-body text-ink">
-              <span aria-hidden="true" className="grid size-6 place-items-center rounded-full bg-white text-caption font-semibold text-brand ring-1 ring-brand-200">
-                {i + 1}
-              </span>
-              {title}
-            </li>
-          ))}
-        </ol>
-
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
-          <DarkButton leadingIcon="plus-white" onClick={() => setCreating(true)}>
-            New Project
-          </DarkButton>
-          <Link to="/clients" className={`group inline-flex items-center gap-1 rounded-sm px-2 py-1 text-small font-semibold text-link transition-colors hover:bg-hover ${FOCUS}`}>
-            Clients &amp; Projects
-            <Icon name="arrow-right-small" size={14} className="transition-transform duration-150 group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-      </section>
+      <ProjectsSnapshot onNew={() => setCreating(true)} />
 
       {creating && (
         <NewProjectModal

@@ -1,12 +1,14 @@
-import { createPortal } from 'react-dom'
-import { forwardRef, useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
 import { useDemo } from '../../components/DemoContext'
-import { Icon } from '../../components/Icon'
 import { Pill, type PillTone } from '../../components/Pill'
+import { FIRST, ROW, TABLE, TABLE_WRAP, TD, TH } from '../../components/tableStyles'
 import { SectionHeading } from '../../components/SectionHeading'
 import { currentPeriod, displayStatus, entryIsInPeriod, entryIsLocked, formatHours, periodLabel, projectName, tableDate, type DisplayStatus, type Entry } from '../../data/store'
 import { DeleteEntryDialog, EditEntryDialog, LockedEntryDialog } from './EntryDialogs'
 import { DEFAULT_SORT, EntriesToolbar, FilterChips, emptyFilters, type EntryFilters, type EntrySort, type SortKey } from './EntriesToolbar'
+
+/** Display text for statuses; "Flagged" reads as "Needs review" (the value stays the same for filters). */
+export const statusLabel = (s: string) => (s === 'Flagged' ? 'Needs review' : s)
 
 const TONE: Record<DisplayStatus, PillTone> = {
   Submitted: 'success',
@@ -20,7 +22,6 @@ const TONE: Record<DisplayStatus, PillTone> = {
 const PARTNER_COLS: (number | undefined)[] = [96, 144, 254, 340, 136, 96, 144, undefined]
 const EMPLOYEE_COLS: (number | undefined)[] = [240, 340, 104, 144, undefined]
 
-const TH = 'h-11.5 pr-4 text-left align-middle text-caption font-normal tracking-th text-ink-th uppercase'
 
 /** Column header that sorts on click; a second click reverses (spec item 2). */
 function SortTh({ label, k, sort, setSort, className = '' }: { label: string; k: SortKey; sort: EntrySort; setSort: (s: EntrySort) => void; className?: string }) {
@@ -35,7 +36,7 @@ function SortTh({ label, k, sort, setSort, className = '' }: { label: string; k:
             dir: active && sort.dir === 'asc' ? 'desc' : 'asc',
           })
         }
-        className={`inline-flex items-center gap-1 rounded-xs uppercase hover:text-ink focus-visible:outline-2 focus-visible:outline-accent ${active ? 'text-ink' : ''}`}
+        className={`inline-flex items-center gap-1 rounded-xs hover:text-ink focus-visible:outline-2 focus-visible:outline-accent ${active ? 'text-ink' : ''}`}
       >
         {label}
         <span aria-hidden="true" className={active ? '' : 'invisible'}>
@@ -45,67 +46,19 @@ function SortTh({ label, k, sort, setSort, className = '' }: { label: string; k:
     </th>
   )
 }
-const TD = 'h-11.5 border-t border-line-row py-2.5 pr-4 align-middle text-small text-ink'
 
-function RowMenu({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => void; onDelete: () => void }) {
-  // Menu position in viewport coordinates: it is drawn `fixed` so the table's scroll container can't clip it.
-  const [open, setOpen] = useState<{ top: number; left: number } | null>(null)
-  const ref = useRef<HTMLDivElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const close = () => setOpen(null)
-    // The menu is portaled to <body> (page animations transform ancestors, which would offset a fixed element).
-    const dismiss = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && !menuRef.current?.contains(e.target as Node) && close()
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && close()
-    document.addEventListener('mousedown', dismiss)
-    document.addEventListener('keydown', esc)
-    window.addEventListener('scroll', close, true)
-    window.addEventListener('resize', close)
-    return () => {
-      document.removeEventListener('mousedown', dismiss)
-      document.removeEventListener('keydown', esc)
-      window.removeEventListener('scroll', close, true)
-      window.removeEventListener('resize', close)
-    }
-  }, [open])
-
-  function toggle(button: HTMLButtonElement) {
-    if (open) return setOpen(null)
-    const r = button.getBoundingClientRect()
-    const MENU_HEIGHT = 80 // two items + padding; flip above the button when there isn't room below
-    setOpen({
-      left: r.left,
-      top: r.bottom + MENU_HEIGHT + 4 > window.innerHeight ? r.top - MENU_HEIGHT - 4 : r.bottom + 4,
-    })
-  }
-
-  const item = 'flex w-full items-center gap-1.75 rounded-sm p-2 text-left text-caption hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent'
+/** Row actions as plain text buttons (owner request 2026-11-10), styled like Manage Team's "Send reminder". */
+function RowActions({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => void; onDelete: () => void }) {
+  const base = 'inline-flex h-8 items-center rounded-sm px-2 text-small font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-accent'
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-label={`Actions for ${entry.description}`}
-        aria-haspopup="menu"
-        aria-expanded={!!open}
-        onClick={(e) => toggle(e.currentTarget)}
-        className="size-7 rounded-sm text-small font-semibold tracking-[1px] hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        •••
+    <span className="-ml-2 flex">
+      <button type="button" aria-label={`Edit ${entry.description}`} onClick={onEdit} className={`${base} text-link hover:bg-hover`}>
+        Edit
       </button>
-      {open &&
-        createPortal(
-          <div ref={menuRef} role="menu" style={open} className="fixed z-40 w-28 rounded-md border border-line bg-menu p-1.25 shadow-menu animate-pop">
-            <button role="menuitem" type="button" className={item} onClick={() => (setOpen(null), onEdit())}>
-              <Icon name="edit" size={13} /> Edit
-            </button>
-            <button role="menuitem" type="button" className={item} onClick={() => (setOpen(null), onDelete())}>
-              <Icon name="close" size={13} /> Delete
-            </button>
-          </div>,
-          document.body,
-        )}
-    </div>
+      <button type="button" aria-label={`Delete ${entry.description}`} onClick={onDelete} className={`${base} text-delete hover:bg-delete-soft`}>
+        Delete
+      </button>
+    </span>
   )
 }
 
@@ -183,7 +136,7 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
       onRemove: () => setFilters({ ...filters, projectId: '' }),
     },
     filters.status && {
-      label: filters.status,
+      label: statusLabel(filters.status),
       onRemove: () => setFilters({ ...filters, status: '' }),
     },
     filters.billable && {
@@ -220,8 +173,8 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
       />
       <FilterChips chips={chips} onClearAll={clearAll} />
 
-      <div className="mt-1.75 overflow-x-auto rounded-lg border border-line bg-surface shadow-card">
-        <table className="w-full table-fixed border-collapse">
+      <div className={`mt-1.75 ${TABLE_WRAP} overflow-x-auto shadow-card`}>
+        <table className={TABLE}>
           <colgroup>
             {role === 'partner'
               ? PARTNER_COLS.map((w, i) => <col key={i} style={w ? { width: w } : undefined} />)
@@ -230,7 +183,7 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
           <thead>
             {role === 'partner' ? (
               <tr>
-                <SortTh label="Date" k="date" sort={sort} setSort={setSort} className="pl-4" />
+                <SortTh label="Date" k="date" sort={sort} setSort={setSort} className={FIRST} />
                 <SortTh label="Employee" k="employee" sort={sort} setSort={setSort} className="pl-6" />
                 <SortTh label="Project" k="project" sort={sort} setSort={setSort} className="pl-6" />
                 <SortTh label="Description" k="description" sort={sort} setSort={setSort} />
@@ -241,7 +194,7 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
               </tr>
             ) : (
               <tr>
-                <SortTh label="Project" k="project" sort={sort} setSort={setSort} className="pl-4" />
+                <SortTh label="Project" k="project" sort={sort} setSort={setSort} className={FIRST} />
                 <SortTh label="Description" k="description" sort={sort} setSort={setSort} />
                 <SortTh label="Hours" k="hours" sort={sort} setSort={setSort} className="pl-6" />
                 <SortTh label="Status" k="status" sort={sort} setSort={setSort} className="pl-6" />
@@ -254,28 +207,28 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
           <tbody>
             {visible.map((e) =>
               role === 'partner' ? (
-                <tr key={e.id} className="transition-colors duration-150 hover:bg-hover">
-                  <td className={`${TD} pl-4`}>{tableDate(e.date)}</td>
+                <tr key={e.id} className={ROW}>
+                  <td className={`${TD} ${FIRST}`}>{tableDate(e.date)}</td>
                   <td className={`${TD} truncate pl-6`}>{e.employee}</td>
                   <td className={`${TD} truncate pl-6`}>{name(e)}</td>
                   <td className={`${TD} break-words whitespace-normal`}>{e.description}</td>
                   <td className={`${TD} pl-6 text-caption text-ink-source`}>{e.source === 'Excel' ? 'Excel import' : 'Direct entry'}</td>
                   <td className={`${TD} pl-6`}>{e.hours.toFixed(1)}</td>
                   <td className={`${TD} pl-6`}>
-                    <Pill tone={TONE[status(e)]}>{status(e)}</Pill>
+                    <Pill tone={TONE[status(e)]}>{statusLabel(status(e))}</Pill>
                   </td>
                   <td className={`${TD} pr-4`} />
                 </tr>
               ) : (
-                <tr key={e.id} className="transition-colors duration-150 hover:bg-hover">
-                  <td className={`${TD} h-14.5 truncate pl-4`}>{name(e)}</td>
+                <tr key={e.id} className={ROW}>
+                  <td className={`${TD} truncate ${FIRST}`}>{name(e)}</td>
                   <td className={`${TD} break-words whitespace-normal`}>{e.description}</td>
                   <td className={`${TD} pl-6`}>{formatHours(e.hours)}</td>
                   <td className={`${TD} pl-6`}>
-                    <Pill tone={TONE[status(e)]}>{status(e)}</Pill>
+                    <Pill tone={TONE[status(e)]}>{statusLabel(status(e))}</Pill>
                   </td>
                   <td className={`${TD} pr-4`}>
-                    <RowMenu entry={e} onEdit={() => guard(e, setEditing)} onDelete={() => guard(e, setDeleting)} />
+                    <RowActions entry={e} onEdit={() => guard(e, setEditing)} onDelete={() => guard(e, setDeleting)} />
                   </td>
                 </tr>
               ),

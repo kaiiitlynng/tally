@@ -4,7 +4,7 @@ import { uid, useDemo } from '../../components/DemoContext'
 import { Field, Select } from '../../components/Field'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
-import { entryFromRow, type HeldRow } from '../../data/store'
+import { entryFromRow, type HeldRow, notify } from '../../data/store'
 import { NewProjectModal } from '../clients/NewProjectModal'
 
 const ACTION = 'rounded-md text-caption text-ink underline hover:text-link focus-visible:outline-2 focus-visible:outline-accent'
@@ -38,6 +38,7 @@ export function HeldRowItem({ row }: { row: HeldRow }) {
         status: 'Open',
         replies: [],
       })
+      notify(s, row.employee, `${me.firstName} asked which project '${row.matter}' is`, '/messages')
       s.heldRows.find((h) => h.id === row.id)!.asked = true
       s.audit.unshift(`${me.firstName} asked ${first} about '${row.matter}'`)
     })

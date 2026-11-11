@@ -4,8 +4,9 @@ import { uid, useDemo } from '../../components/DemoContext'
 import { Field, Select, TextInput } from '../../components/Field'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
+import { timesheetDueLabel } from '../../data/store'
 
-export const NEW_PROJECT_STEPS = ['Client information', 'Project details', 'Billing configuration']
+export const NEW_PROJECT_STEPS = ['Client information', 'Project details', 'Billing']
 const CATEGORIES = ['Consulting', 'Accounting and advisory', 'Legal services', 'Engineering', 'Creative agency']
 
 /** Three-step "New Project" flow (prototype code layer; not drawn in Figma). */
@@ -21,7 +22,7 @@ export function NewProjectModal({ onClose, onCreated, initialName = '' }: { onCl
     contact: '',
     email: '',
     address: '',
-    deadline: 'June 3',
+    deadline: timesheetDueLabel,
   })
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }))
 
@@ -127,7 +128,6 @@ export function NewProjectModal({ onClose, onCreated, initialName = '' }: { onCl
             <Icon name="check-rate" size={18} />
             <span>
               <b className="block text-small font-semibold">Standard rates will apply by work date</b>
-              <small className="mt-0.75 block text-caption">Historical entries keep the rate effective when work occurred.</small>
             </span>
           </div>
         </div>

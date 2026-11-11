@@ -9,7 +9,6 @@ export function WarningConfirm({ title, children }: { title: string; children: R
         <Icon name="review-caution" size={18} />
         <span>
           <b className="block text-small font-semibold">{title}</b>
-          <small className="mt-0.75 block text-caption text-confirm-body">Nothing will be changed automatically. Confirm only if the details are correct.</small>
         </span>
       </div>
       <div className="flex shrink-0 gap-2">{children}</div>

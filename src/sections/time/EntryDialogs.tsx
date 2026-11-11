@@ -49,12 +49,12 @@ export function EditEntryDialog({ entry, onClose, onSaved, onLocked }: { entry: 
   return (
     <Modal
       size="lg"
-      title="Edit Time Entry."
+      title="Edit time entry"
       onClose={onClose}
       footer={
         <>
           <OutlineButton onClick={onClose}>Cancel</OutlineButton>
-          <DarkButton onClick={save}>Save Changes</DarkButton>
+          <DarkButton onClick={save}>Save changes</DarkButton>
         </>
       }
     >
@@ -194,7 +194,7 @@ export function LockedEntryDialog({ entry, onClose, onSent }: { entry: Entry; on
       }
     >
       <p className="text-small text-ink-muted">
-        This entry is part of an approved or exported invoice, so its billing record cannot be changed or deleted here. Ask Vanessa to create an adjustment.
+        This entry is on an approved invoice, so it can't be changed. Ask Vanessa to correct it.
       </p>
     </CenteredDialog>
   )

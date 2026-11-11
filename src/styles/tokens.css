@@ -145,8 +145,7 @@
   --color-teammate: #fff1e6;
   --color-danger-soft: #ffe7f2;
   --color-danger-ink: #b3093c;
-  --color-live-ring: #fff1e6;
-  --color-log-dot: #fdba74;
+  --color-danger-line: #f5a3c2; /* outline for the Overdue card */
   --color-switch-on: #c2410c;
   --color-switch-off: #64748d;
 
@@ -169,6 +168,13 @@
   --color-tint-b: #e8f4fb;
   --color-tint-c: #e9f6ef;
   --color-tint-d: #eef1f6;
+  /* Matching outlines, a few steps deeper than each tint so the edge reads (Clients & Projects, Ready for Review). */
+  --color-tint-montrose-line: #b9cdf1;
+  --color-tint-aster-line: #a7dcd7;
+  --color-tint-a-line: #c9c4f3;
+  --color-tint-b-line: #acd5ec;
+  --color-tint-c-line: #b2dcc4;
+  --color-tint-d-line: #c4cdda;
   --color-card-rule: #e8edf3;
   --color-card-foot: #e8edf3;
   --color-ink-meta: #3c4f69;

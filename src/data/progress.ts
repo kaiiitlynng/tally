@@ -55,10 +55,16 @@ export function projectProgress(s: Store, project: Project, person: string) {
   }
 }
 
-/** Card background per project (prototype projectTint). */
+/** Card fill + matching outline per project (prototype projectTint). Full class names so Tailwind keeps them. */
 export function projectTint(projectId: string) {
-  const named: Record<string, string> = { montrose: 'bg-tint-montrose', aster: 'bg-tint-aster' }
+  const named: Record<string, string> = {
+    montrose: 'bg-tint-montrose border-tint-montrose-line',
+    aster: 'bg-tint-aster border-tint-aster-line',
+  }
   if (named[projectId]) return named[projectId]
-  const palette = ['bg-tint-a', 'bg-tint-b', 'bg-tint-c', 'bg-tint-d']
+  const palette = ['bg-tint-a border-tint-a-line', 'bg-tint-b border-tint-b-line', 'bg-tint-c border-tint-c-line', 'bg-tint-d border-tint-d-line']
   return palette[[...projectId].reduce((t, c) => t + c.charCodeAt(0), 0) % palette.length]
 }
+
+/** Just the project's outline color (no fill), for white cards that still carry the project's color. */
+export const projectOutline = (projectId: string) => projectTint(projectId).split(' ').find((c) => c.startsWith('border-'))!

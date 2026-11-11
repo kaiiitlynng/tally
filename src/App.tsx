@@ -10,6 +10,7 @@ import MyProjects from './pages/MyProjects'
 import NotFound from './pages/NotFound'
 import PartnerHome from './pages/PartnerHome'
 import ReviewInvoices from './pages/ReviewInvoices'
+import EmployeeSettings from './pages/EmployeeSettings'
 import Settings from './pages/Settings'
 import TeamReminders from './pages/TeamReminders'
 import TimeEntries from './pages/TimeEntries'
@@ -32,7 +33,7 @@ function AppRoutes() {
         <Route path="invoices" element={partnerOnly(<Invoices />)} />
         <Route path="messages" element={<Messages />} />
         <Route path="team" element={partnerOnly(<TeamReminders />)} />
-        <Route path="settings" element={partnerOnly(<Settings />)} />
+        <Route path="settings" element={role === 'partner' ? <Settings /> : <EmployeeSettings />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

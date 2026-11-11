@@ -170,7 +170,7 @@ export function EntriesToolbar({ count, projects, employees, filters, setFilters
                   <input type="date" value={filters.dateTo} onChange={(e) => set({ dateTo: e.target.value })} className={SELECT} />
                 </label>
               </div>
-              <p className="mt-1.75 text-caption text-ink-meta">Setting a range temporarily overrides the current month.</p>
+              <p className="mt-1.75 text-caption text-ink-meta">Overrides the current month.</p>
             </div>
             {employees && (
               <label className={LABEL}>
@@ -199,7 +199,9 @@ export function EntriesToolbar({ count, projects, employees, filters, setFilters
               <select value={filters.status} onChange={(e) => set({ status: e.target.value })} className={SELECT}>
                 <option value="">All statuses</option>
                 {['Draft', 'Submitted', 'Flagged', 'Updated'].map((s) => (
-                  <option key={s}>{s}</option>
+                  <option key={s} value={s}>
+                    {s === 'Flagged' ? 'Needs review' : s}
+                  </option>
                 ))}
               </select>
             </label>

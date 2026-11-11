@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { DarkButton, OutlineButton } from '../../components/Button'
 import { useDemo } from '../../components/DemoContext'
 import { Field, TextArea, TextInput } from '../../components/Field'
+import { Icon } from '../../components/Icon'
 import { Disclaimer, Modal } from '../../components/Modal'
 import { demoToday, invoiceTotal, money } from '../../data/store'
 
@@ -38,6 +40,21 @@ export function SendInvoiceModal({ projectId, onClose }: { projectId: string; on
       }
     >
       <div className="mt-4 flex flex-col gap-3">
+        {/* Gmail not connected: suggest connecting it, but the (simulated) send still works. */}
+        {!store.gmailConnected && (
+          <div className="flex items-center gap-2 rounded-md border border-warn-line bg-warn-soft px-3 py-2.5 text-small text-warn-ink">
+            <Icon name="warning-caution" size={16} />
+            <p className="flex-1">Gmail isn&apos;t connected, so this won&apos;t reach the client&apos;s inbox.</p>
+            <Link
+              to="/settings?tab=integrations"
+              onClick={onClose}
+              aria-label="Connect Gmail"
+              className="shrink-0 rounded-xs font-semibold text-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              Connect
+            </Link>
+          </div>
+        )}
         <Field label="To" htmlFor="send-to">
           <TextInput id="send-to" readOnly value={`${p.contact} <${p.email ?? 'no billing email on file'}>`} className="bg-segment" />
         </Field>

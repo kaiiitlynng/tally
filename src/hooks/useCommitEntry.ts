@@ -33,7 +33,6 @@ export function useCommitEntry() {
       s.entries = existing ? s.entries.map((e) => (e.id === existing.id ? record : e)) : [...s.entries, record]
 
       if (submit) {
-        s.submissions[me.name] = 'Submitted'
         s.lastSubmitted[me.name] = demoToday
         // The partner isn't on the reminder schedule, so their own submissions don't touch the reminder log.
         if (role !== 'partner') s.reminderLog.unshift(`${me.name} submitted time; pending overdue reminders canceled`)

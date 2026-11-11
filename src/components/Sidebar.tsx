@@ -3,7 +3,7 @@ import { useDemo } from './DemoContext'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
 import { StepMarker } from './StepMarker'
-import { invoicesNeedingReview } from '../data/store'
+import { invoicesNeedingReview, isUnread } from '../data/store'
 import { WORKFLOW } from '../data/workflow'
 
 interface NavItem {
@@ -122,7 +122,7 @@ function BillingWorkflow({ counts }: { counts: Counts }) {
 /** Left navigation rail (Figma 36:289). */
 export function Sidebar() {
   const { role, me, store } = useDemo()
-  const unread = store.messages.filter((m) => m.unreadBy.includes(role)).length
+  const unread = store.messages.filter((m) => isUnread(m, me.name, role)).length
   const counts = {
     '/messages': { n: unread, sr: 'unread' },
     ...(role === 'partner' && { '/review': { n: invoicesNeedingReview(store), sr: 'invoices to review' } }),
@@ -146,7 +146,7 @@ export function Sidebar() {
           <div className="h-px bg-line" />
         </div>
         <div className="pt-4">
-          <NavGroup label="Workspace" items={role === 'partner' ? WORKSPACE : [WORKSPACE[0]]} counts={counts} />
+          <NavGroup label="Workspace" items={role === 'partner' ? WORKSPACE : [WORKSPACE[0], WORKSPACE[2]]} counts={counts} />
         </div>
       </nav>
 

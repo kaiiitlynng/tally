@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { DarkButton, OutlineButton } from '../components/Button'
-import { uid, useDemo } from '../components/DemoContext'
+import { useDemo } from '../components/DemoContext'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/Icon'
 import { PageTitle } from '../components/PageTitle'
 import { Pill } from '../components/Pill'
-import { addReply, allFlags, initials, isFinal, isOpen, setFlagStatus } from '../data/store'
+import { NewMessageModal } from '../sections/messages/NewMessageModal'
+import { addReply, allFlags, isUnread, initials, isFinal, isOpen, notify, partner, setFlagStatus } from '../data/store'
 
 const AVATAR = 'grid size-7 shrink-0 place-items-center rounded-full border-2 border-member-ring bg-member text-caption'
 
@@ -32,8 +34,11 @@ function Bubble({ from, time, body, mine }: { from: string; time: string; body: 
 export default function Messages() {
   const { store, update, role, me } = useDemo()
   const visible = store.messages.filter((m) => m.from === me.name || m.to === me.name)
-  const [selectedId, setSelectedId] = useState(visible[0]?.id ?? '')
+  // ?thread=<id> (from Home's "Respond") opens that conversation.
+  const [params] = useSearchParams()
+  const [selectedId, setSelectedId] = useState(params.get('thread') ?? visible[0]?.id ?? '')
   const [reply, setReply] = useState('')
+  const [composing, setComposing] = useState(false)
   const message = visible.find((m) => m.id === selectedId) ?? visible[0]
   const entry = message?.entryId ? store.entries.find((e) => e.id === message.entryId) : undefined
   const other = (m: (typeof visible)[number]) => (m.from === me.name ? m.to : m.from)
@@ -41,6 +46,13 @@ export default function Messages() {
   // Keep the newest message in view when a thread opens or a reply arrives.
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight })
+  }, [message?.id, message?.replies.length])
+
+  // Whatever conversation is on screen counts as read (the first one is shown automatically, a deep link
+  // picks another), so the Messages badge only counts conversations not yet seen.
+  useEffect(() => {
+    if (message && isUnread(message, me.name, role)) open(message.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [message?.id, message?.replies.length])
 
   function open(id: string) {
@@ -60,26 +72,27 @@ export default function Messages() {
   function sendReply(correct = false) {
     if (!message || !reply.trim()) return
     const body = reply.trim()
+    const to = other(message)
     update((s) => {
       const m = addReply(s, message.id, { from: me.name, body, time: 'Just now' })
-      m.unreadBy = [role === 'partner' ? 'employee' : 'partner']
+      m.unreadBy = [to === partner.name ? 'partner' : 'employee']
       const linked = m.entryId ? allFlags(s).filter((f) => f.entryId === m.entryId) : []
       if (role === 'partner') {
         if (linked.some(isOpen)) m.status = 'Open'
-        return
+      } else {
+        m.status = 'Replied'
+        if (correct && m.entryId) {
+          const e = s.entries.find((x) => x.id === m.entryId)!
+          const old = e.description
+          e.original = old
+          e.description = body
+          s.audit.unshift(`${me.firstName} corrected “${old}”; original preserved`)
+        }
+        linked.filter(isOpen).forEach((f) => setFlagStatus(s, f.id, 'Response received'))
+        if (m.projectId && linked.some(isOpen) && !isFinal(s.invoiceStatus[m.projectId])) s.invoiceStatus[m.projectId] = 'In review'
       }
-      m.status = 'Replied'
-      if (correct && m.entryId) {
-        const e = s.entries.find((x) => x.id === m.entryId)!
-        const old = e.description
-        e.original = old
-        e.description = body
-        s.audit.unshift(`${me.firstName} corrected “${old}”; original preserved`)
-      }
-      linked.filter(isOpen).forEach((f) => setFlagStatus(s, f.id, 'Response received'))
-      if (m.projectId && linked.some(isOpen) && !isFinal(s.invoiceStatus[m.projectId])) s.invoiceStatus[m.projectId] = 'In review'
-      if (m.projectId)
-        s.notifications.unshift({ id: uid(), text: `${me.firstName} replied: “${m.subject}”`, to: linked.length ? `/review/${m.projectId}` : '/messages', read: false })
+      // The other person's bell: the partner goes to the review when the thread is about an invoice line.
+      notify(s, to, `${me.firstName} replied: “${m.subject}”`, to === partner.name && linked.length && m.projectId ? `/review/${m.projectId}` : '/messages')
     })
     setReply('')
   }
@@ -88,7 +101,11 @@ export default function Messages() {
     <>
       <PageTitle
         title="Messages"
-        description="Focused requests, linked entries, and employee responses in one professional inbox."
+        actions={
+          <DarkButton leadingIcon="plus-white" onClick={() => setComposing(true)}>
+            New message
+          </DarkButton>
+        }
       />
       {/* Inbox fills the rest of the viewport (one-off: 15.5rem = header + page padding + title) so the reply box is always on screen. */}
       <div className="mt-6 grid h-[calc(100dvh-15.5rem)] min-h-104 grid-cols-[330px_1fr] overflow-hidden rounded-lg border border-line bg-inbox">
@@ -106,7 +123,7 @@ export default function Messages() {
                 onClick={() => open(m.id)}
                 className={`grid w-full grid-cols-[34px_1fr_auto] gap-2.5 border-t border-thread-line p-4 text-left transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
                   message?.id === m.id ? 'bg-thread-active' : 'hover:bg-hover'
-                } ${m.unreadBy.includes(role) ? 'shadow-[inset_3px_0_var(--color-orange)]' : ''}`}
+                } ${isUnread(m, me.name, role) ? 'shadow-[inset_3px_0_var(--color-orange)]' : ''}`}
               >
                 <span className={AVATAR}>{initials(other(m))}</span>
                 <span className="min-w-0">
@@ -118,9 +135,7 @@ export default function Messages() {
               </button>
             ))
           ) : (
-            <EmptyState icon="message-empty-small" iconSize={18} title="No messages yet" size="sm">
-              Billing requests will appear here.
-            </EmptyState>
+            <EmptyState icon="message-empty-small" iconSize={18} title="No messages yet" size="sm" />
           )}
         </aside>
 
@@ -141,7 +156,7 @@ export default function Messages() {
                     <div className="flex items-center gap-2">
                       <Icon name="nav-time-entries" size={18} />
                       <span>
-                        <small className="block text-caption">LINKED TIME ENTRY</small>
+                        <small className="block text-caption">Time entry</small>
                         <b className="mt-0.75 block text-small font-semibold">
                           {entry.date} · {entry.hours} hours
                         </b>
@@ -177,13 +192,13 @@ export default function Messages() {
                   {role === 'employee' && entry ? (
                     <>
                       <span id="reply-hint" className="mr-auto text-caption text-ink-muted">
-                        Enter to send, Shift+Enter for a new line. A corrected description replaces the entry&apos;s text; the original is kept.
+                        Enter to send, Shift+Enter for a new line. Using it as the new description keeps the original.
                       </span>
                       <OutlineButton onClick={() => sendReply()} disabled={!reply.trim()}>
                         Send reply
                       </OutlineButton>
                       <DarkButton onClick={() => sendReply(true)} disabled={!reply.trim()}>
-                        Submit as corrected description
+                        Use as new description
                       </DarkButton>
                     </>
                   ) : (
@@ -204,6 +219,15 @@ export default function Messages() {
           )}
         </section>
       </div>
+      {composing && (
+        <NewMessageModal
+          onClose={() => setComposing(false)}
+          onSent={(id) => {
+            setComposing(false)
+            setSelectedId(id)
+          }}
+        />
+      )}
     </>
   )
 }

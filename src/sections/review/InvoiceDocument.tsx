@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDemo } from '../../components/DemoContext'
-import { Pill } from '../../components/Pill'
 import { archivedInvoiceTotal, projectById, type ArchivedInvoice } from '../../data/history'
 import {
   currentPeriod,
@@ -16,7 +15,6 @@ import {
   sourceOf,
   type BillingPeriod,
   type Entry,
-  type InvoiceStatus,
   type Project,
 } from '../../data/store'
 
@@ -116,7 +114,7 @@ function LineActions({ entry, onEdit }: { entry: Entry; onEdit: () => void }) {
             Edit
           </button>
           <button role="menuitem" type="button" className={MENU_ITEM} onClick={toggleNoCharge}>
-            {entry.noCharge ? 'Mark billable' : 'Mark non-billable'}
+            {entry.noCharge ? 'Charge again' : "Don't charge"}
           </button>
           <button role="menuitem" type="button" className={`${MENU_ITEM} text-delete`} onClick={() => setOpen('delete')}>
             Delete
@@ -239,14 +237,12 @@ function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
  */
 function InvoicePaper({
   project: p,
-  status,
   period,
   total,
   children,
   footnote,
 }: {
   project: Project
-  status: string
   period: BillingPeriod
   total: number
   children: ReactNode
@@ -263,9 +259,6 @@ function InvoicePaper({
         <span className="pl-2.25">
           <b className="block text-caption font-semibold">HARTWELL &amp; KNOX</b>
           <small className="block text-caption tracking-doc-firm">FORENSIC ADVISORY</small>
-        </span>
-        <span className="ml-auto">
-          <Pill tone={isFinal(status as InvoiceStatus) ? 'success' : 'accent'}>{status}</Pill>
         </span>
       </header>
 
@@ -338,7 +331,6 @@ export function InvoiceDocument({ projectId, highlight, editable = false }: { pr
   return (
     <InvoicePaper
       project={p}
-      status={status}
       period={currentPeriod}
       total={invoiceTotal(store, projectId)}
       footnote={
@@ -404,7 +396,7 @@ export function ArchivedInvoiceDocument({ invoice, period }: { invoice: Archived
   const { store } = useDemo()
   const p = projectById(store, invoice.projectId)!
   return (
-    <InvoicePaper project={p} status={invoice.status} period={period} total={archivedInvoiceTotal(invoice)}>
+    <InvoicePaper project={p} period={period} total={archivedInvoiceTotal(invoice)}>
       {invoice.lines.map((l, i) => (
         <tr key={i} className={`${LINE} border-b border-doc-row`}>
           <td>{l.date.slice(5)}</td>

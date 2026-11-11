@@ -20,10 +20,9 @@ export default function ClientsProjects() {
     <>
       <PageTitle
         title="Clients & Projects"
-        description="Keep billing contacts, assignments, and project rules in one place."
         actions={
           <DarkButton leadingIcon="plus-white" onClick={() => setCreating(true)}>
-            New Project
+            New project
           </DarkButton>
         }
       />

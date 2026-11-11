@@ -7,7 +7,7 @@ const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visi
 
 /** Sticky top bar (Figma 36:12 partner, 36:11420 employee). */
 export function Header() {
-  const { reset, role, setRole, me } = useDemo()
+  const { reset, role, setRole } = useDemo()
   const navigate = useNavigate()
 
   const switchRole = (next: Role) => {
@@ -45,14 +45,7 @@ export function Header() {
         >
           Reset demo
         </button>
-        {role === 'partner' && <NotificationBell />}
-        <button
-          type="button"
-          aria-label={`Account: ${me.name}`}
-          className={`grid size-8 place-items-center rounded-full bg-avatar text-caption font-semibold text-avatar-ink transition-shadow hover:ring-4 hover:ring-brand-50 ${FOCUS}`}
-        >
-          {me.initials}
-        </button>
+        <NotificationBell />
       </div>
     </header>
   )

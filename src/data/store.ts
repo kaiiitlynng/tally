@@ -66,6 +66,8 @@ export interface Notification {
   text: string
   to: string
   read: boolean
+  /** Team member it's for; absent = the partner's bell. */
+  recipient?: string
 }
 
 export type FlagStatus = 'Open' | 'Awaiting employee' | 'Response received' | 'Resolved' | 'Dismissed'
@@ -102,7 +104,8 @@ export interface Message {
 }
 
 export type InvoiceStatus = 'Draft' | 'In review' | 'Awaiting employee' | 'Ready to approve' | 'Approved' | 'Exported' | 'Sent'
-export type Submission = 'Submitted' | 'Due soon' | 'Overdue'
+/** A team member's timesheet status for the current period, derived by submissionStatus(). */
+export type Submission = 'Submitted' | 'Due soon' | 'Not submitted' | 'Overdue'
 
 export interface TeamMember {
   name: string
@@ -110,7 +113,19 @@ export interface TeamMember {
   role: 'Partner' | 'Employee'
 }
 
+/** A team member's own settings (employee Settings page). */
+export interface MemberPrefs {
+  defaultProjectId: string
+  billable: boolean
+  reminders: boolean
+  messageAlerts: boolean
+  emailCopies: boolean
+}
+export const defaultPrefs: MemberPrefs = { defaultProjectId: '', billable: true, reminders: true, messageAlerts: true, emailCopies: false }
+
 export interface Store {
+  /** Per-person settings, keyed by name; missing = defaultPrefs. */
+  memberPrefs: Record<string, MemberPrefs>
   projects: Project[]
   /** Firm members with Tally access (Settings → Team). Removing someone keeps their entries and rate history. */
   team: TeamMember[]
@@ -118,15 +133,18 @@ export interface Store {
   flags: Flag[]
   messages: Message[]
   invoiceStatus: Record<string, InvoiceStatus>
-  submissions: Record<string, Submission>
-  /** Date of each person's latest timesheet submission (yyyy-mm-dd). */
+  /** Date of each person's latest timesheet submission (yyyy-mm-dd). Statuses are derived from it (submissionStatus). */
   lastSubmitted: Record<string, string>
+  /** Date the latest reminder (automatic or manual) was sent to each person (yyyy-mm-dd). */
+  lastReminded: Record<string, string>
   reminderLog: string[]
   audit: string[]
   rates: Record<string, number>
   /** 2026 rates scheduled from Settings; effective Jan 1, 2026. Empty until saved. */
   scheduledRates: Record<string, number>
   reminderChannels: { inApp: boolean; email: boolean }
+  /** Gmail connected in Settings → Integrations (simulated). Email notifications need it. */
+  gmailConnected: boolean
   reminderSchedule: { sevenDays: boolean; oneDay: boolean; overdue: boolean }
   threshold: number
   removedLines: RemovedLine[]
@@ -144,16 +162,21 @@ export const employee = { name: 'Nora Chen', firstName: 'Nora', initials: 'NC', 
 export const users = { partner, employee } as const
 
 /**
- * The prototype computes deadlines from the real clock, which makes every May 2025 deadline
- * "overdue" today. The demo pins "today" to May 30, 2025 so it matches the frames ("04 days left").
+ * The prototype computes deadlines from the real clock, which makes every May 2025 deadline "overdue" today.
+ * The demo pins "today" to June 1, 2025 (owner, 2026-11-10): May timesheets are due June 3, two days away.
+ * Every date calculation uses this one constant.
  */
-export const demoToday = '2025-05-30'
+export const demoToday = '2025-06-01'
 
 export interface BillingPeriod {
   year: number
   month: number
 }
 export const currentPeriod: BillingPeriod = { year: 2025, month: 5 }
+/** The current period's timesheets are due on the 3rd of the next month: May → June 3, 2025. */
+export const timesheetDue = `${currentPeriod.month === 12 ? currentPeriod.year + 1 : currentPeriod.year}-${String((currentPeriod.month % 12) + 1).padStart(2, '0')}-03`
+/** "June 3" */
+export const timesheetDueLabel = new Date(`${timesheetDue}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
 export const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 export const periodLabel = ({ year, month }: BillingPeriod) => `${monthNames[month - 1]} ${year}`
 /** "May 1–31, 2025" (or "May 1–31" without the year), with the month's real last day. */
@@ -242,9 +265,9 @@ const flags: Flag[] = [
     id: 'f1',
     entryId: 'e2',
     type: 'Unusually high hours',
-    title: '20 hours may be a decimal error',
+    title: '20 hours may be a typo',
     noticed: 'Nora recorded 20.0 hours on May 16; the next-highest day on Nora\'s timesheet is 9.3 hours.',
-    why: 'A mistyped decimal would materially overstate the client invoice.',
+    why: 'Leaving it would overbill the client.',
     suggestion: 'Change 20.0 hours to 2.0 hours',
     change: { field: 'Hours', from: '20.0', to: '2.0' },
     impact: -11160,
@@ -265,6 +288,7 @@ const flags: Flag[] = [
 
 export function initialStore(): Store {
   return structuredClone({
+    memberPrefs: {},
     projects,
     team: people.map((name) => ({ name, email: `${name.toLowerCase().replace(' ', '.')}@hartwellknox.example`, role: name === partner.name ? 'Partner' : 'Employee' })),
     entries,
@@ -272,25 +296,17 @@ export function initialStore(): Store {
     messages: [],
     // Aster carries a daily-hours flag (9.3h on May 13 > 8h), so it starts in review.
     invoiceStatus: { montrose: 'In review', aster: 'In review', northstar: 'Draft' },
-    submissions: {
-      'Vanessa Hart': 'Submitted',
-      'Nora Chen': 'Submitted',
-      'Ryan Cole': 'Due soon',
-      'Maya Singh': 'Overdue',
-      'Eli Brooks': 'Submitted',
-    },
+    // Today is June 1; May timesheets are due June 3. Ryan and Maya last submitted for April, so they're due soon.
     lastSubmitted: {
       'Vanessa Hart': '2025-05-29',
       'Nora Chen': '2025-05-29',
-      'Ryan Cole': '2025-05-29',
+      'Ryan Cole': '2025-04-30',
       'Maya Singh': '2025-04-30',
       'Eli Brooks': '2025-05-29',
     },
-    reminderLog: [
-      '24-hour reminder scheduled for Ryan Cole',
-      'Overdue reminder sent in-app to Maya Singh',
-      '7-day reminder completed for Nora Chen',
-    ],
+    // The "1 week before" automatic reminder went out May 27 to everyone who hadn't submitted yet.
+    lastReminded: { 'Nora Chen': '2025-05-27', 'Ryan Cole': '2025-05-27', 'Maya Singh': '2025-05-27' },
+    reminderLog: ['1-week reminder sent in-app to Nora Chen, Ryan Cole and Maya Singh'],
     audit: [
       'Tally applied current billing rates',
       'Tally prepared three draft invoices',
@@ -299,6 +315,7 @@ export function initialStore(): Store {
     rates: { 'Vanessa Hart': 850, 'Nora Chen': 620, 'Ryan Cole': 465, 'Maya Singh': 410, 'Eli Brooks': 380 },
     scheduledRates: {},
     reminderChannels: { inApp: true, email: false },
+    gmailConnected: false,
     reminderSchedule: { sevenDays: true, oneDay: true, overdue: true },
     threshold: 8,
     removedLines: [],
@@ -413,11 +430,28 @@ export const entryIsFlagged = (s: Store, entryId: string) => allFlags(s).some((f
 /** A draft invoice still waits on time; every other status has its time in (Figma: Coleman "Time missing"). */
 export const completeness = (s: Store, projectId: string) => (s.invoiceStatus[projectId] === 'Draft' ? 'Time missing' : 'Complete')
 
-/** People whose timesheet is overdue (Figma: "01 timesheet missing", "Maya is overdue"). */
-export const overduePeople = (s: Store) => Object.keys(s.submissions).filter((p) => s.submissions[p] === 'Overdue')
-
 /** Whole days from the pinned demo date to a yyyy-mm-dd date. */
 export const daysFromToday = (iso: string) => Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${demoToday}T00:00:00Z`)) / 86400000)
+
+/** Whether a person has submitted a timesheet for the current period (a submission on or after its first day). */
+const periodStart = `${currentPeriod.year}-${String(currentPeriod.month).padStart(2, '0')}-01`
+export const submittedThisPeriod = (s: Store, person: string) => (s.lastSubmitted[person] ?? '') >= periodStart
+
+/**
+ * A team member's status for the current period, from their data: Submitted; otherwise Overdue after the due
+ * date, Due soon within 7 days of it, or Not submitted.
+ */
+export function submissionStatus(s: Store, person: string): Submission {
+  if (submittedThisPeriod(s, person)) return 'Submitted'
+  const days = daysFromToday(timesheetDue)
+  return days < 0 ? 'Overdue' : days <= 7 ? 'Due soon' : 'Not submitted'
+}
+
+/** Days past the due date (for "Overdue · n days"); 0 when not overdue. */
+export const daysOverdue = () => Math.max(0, -daysFromToday(timesheetDue))
+
+/** Team members (other than `me`) who haven't submitted for the current period. */
+export const outstandingPeople = (s: Store, me: string) => s.team.map((m) => m.name).filter((n) => n !== me && !submittedThisPeriod(s, n))
 
 /** Invoices that still need Vanessa's attention (drives "Review N invoices"). */
 export const invoicesNeedingReview = (s: Store) =>
@@ -469,6 +503,28 @@ export function addReply(s: Store, messageId: string, reply: Message['replies'][
   m.replies.push(reply)
   s.messages.unshift(m)
   return m
+}
+
+export const prefsFor = (s: Store, person: string): MemberPrefs => ({ ...defaultPrefs, ...s.memberPrefs[person] })
+
+/**
+ * Add a bell notification for a person (the partner's bell when `person` is the partner). Respects the
+ * person's notification settings: `kind` 'reminder' or 'message'. Call inside update().
+ */
+export function notify(s: Store, person: string, text: string, to: string, kind: 'reminder' | 'message' = 'message') {
+  const prefs = prefsFor(s, person)
+  if (person !== partner.name && !(kind === 'reminder' ? prefs.reminders : prefs.messageAlerts)) return
+  s.notifications.unshift({ id: Math.random().toString(36).slice(2, 9), text, to, read: false, recipient: person === partner.name ? undefined : person })
+}
+
+/**
+ * Unread for this person: they're in the conversation, the newest message is from someone else, and they
+ * haven't opened it since (unreadBy is cleared when the thread is opened).
+ */
+export function isUnread(m: Message, person: string, role: Role) {
+  const involved = m.from === person || m.to === person
+  const lastFrom = m.replies.at(-1)?.from ?? m.from
+  return involved && lastFrom !== person && m.unreadBy.includes(role)
 }
 
 export const projectName = (s: Store, projectId: string) => s.projects.find((p) => p.id === projectId)?.name ?? 'Unknown project'

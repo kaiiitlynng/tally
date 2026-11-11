@@ -24,8 +24,13 @@ export function Dialog({
 
   useEffect(() => {
     const dialog = ref.current
+    // Remember what had focus so it gets focus back when the dialog closes (showModal traps focus inside).
+    const trigger = document.activeElement as HTMLElement | null
     dialog?.showModal()
-    return () => dialog?.close()
+    return () => {
+      dialog?.close()
+      if (trigger?.isConnected) trigger.focus()
+    }
   }, [])
 
   return (

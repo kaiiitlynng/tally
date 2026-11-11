@@ -44,14 +44,25 @@ export function DarkLinkButton({ to, children }: { to: string; children: ReactNo
 export function DarkButton({
   leadingIcon,
   iconSize = 18,
+  trailingIcon,
+  arrow = false,
   children,
   className,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { leadingIcon?: string; iconSize?: number }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  leadingIcon?: string
+  /** Icon after the label (e.g. the bell on "Remind"). */
+  trailingIcon?: string
+  iconSize?: number
+  /** Trailing arrow, like DarkLinkButton. */
+  arrow?: boolean
+}) {
   return (
     <button type="button" className={`${DARK} ${className ?? ''}`} {...rest}>
       {leadingIcon && <Icon name={leadingIcon} size={iconSize} />}
       {children}
+      {trailingIcon && <Icon name={trailingIcon} size={iconSize} />}
+      {arrow && <Arrow />}
     </button>
   )
 }

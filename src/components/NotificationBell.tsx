@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router'
 import { useDemo } from './DemoContext'
 import { Icon } from './Icon'
 
-/** Top-bar bell with unread count (spec item 4). Partner only: notifications are for the reviewer. */
+/** Top-bar bell with unread count (spec item 4). Each role sees its own: the partner's, or ones addressed to the employee. */
 export function NotificationBell() {
-  const { store, update } = useDemo()
+  const { store, update, role, me } = useDemo()
+  const mine = store.notifications.filter((n) => (role === 'partner' ? !n.recipient : n.recipient === me.name))
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const unread = store.notifications.filter((n) => !n.read).length
+  const unread = mine.filter((n) => !n.read).length
 
   useEffect(() => {
     if (!open) return
@@ -43,9 +44,9 @@ export function NotificationBell() {
       {open && (
         <div role="dialog" aria-label="Notifications" className="absolute top-full right-0 z-40 mt-2 w-72 rounded-lg border border-line-step bg-modal p-2 shadow-popover animate-pop">
           <b className="block px-2 pt-1 pb-2 text-small font-semibold">Notifications</b>
-          {store.notifications.length ? (
+          {mine.length ? (
             <ul>
-              {store.notifications.map((n) => (
+              {mine.map((n) => (
                 <li key={n.id}>
                   <button
                     type="button"
@@ -68,7 +69,7 @@ export function NotificationBell() {
               ))}
             </ul>
           ) : (
-            <p className="px-2 pb-2 text-caption text-ink-muted">No notifications yet. They appear here when a project's time is all in.</p>
+            <p className="px-2 pb-2 text-caption text-ink-muted">No notifications yet.</p>
           )}
         </div>
       )}

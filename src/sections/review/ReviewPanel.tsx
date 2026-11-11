@@ -1,32 +1,15 @@
-import type { ReactNode } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { DarkButton, OutlineButton } from '../../components/Button'
 import { useDemo } from '../../components/DemoContext'
 import { Icon } from '../../components/Icon'
-import { Pill, type PillTone } from '../../components/Pill'
-import { allFlags, initials, money, shortDate, type Flag, type FlagStatus } from '../../data/store'
-import { TieOutCard } from './TieOutCard'
+import { allFlags, initials, type Flag } from '../../data/store'
+import { dayText, flagCopy, type FlagAction } from './flagCopy'
+import { TallyReasoning } from './TallyReasoning'
 
-const ACTION =
-  'flex h-10 items-center justify-center gap-1.5 rounded-sm border px-2 text-small font-semibold whitespace-nowrap active:scale-[0.98] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
-const PRIMARY = `${ACTION} col-span-2 border-dark bg-dark text-white shadow-card hover:border-brand-hover hover:bg-brand-hover`
-const SECONDARY = `${ACTION} border-line bg-white text-ink hover:border-brand-200 hover:bg-hover hover:text-brand`
-
-const STATUS_TONE: Record<FlagStatus, PillTone> = {
-  Open: 'accent',
-  'Awaiting employee': 'neutral',
-  'Response received': 'success',
-  Resolved: 'success',
-  Dismissed: 'neutral',
-}
-
-function Section({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <p className="text-caption font-semibold text-ink-muted">{label}</p>
-      <div className="pt-1">{children}</div>
-    </div>
-  )
-}
+const BUTTON =
+  'flex h-10 w-full items-center justify-center rounded-sm border px-3 text-small font-semibold active:scale-[0.98] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+const PRIMARY = `${BUTTON} border-brand bg-brand text-white shadow-card hover:border-brand-hover hover:bg-brand-hover`
+const SECONDARY = `${BUTTON} border-line-field bg-white text-ink shadow-card hover:bg-hover`
 
 interface ReviewPanelProps {
   projectId: string
@@ -43,12 +26,67 @@ interface ReviewPanelProps {
   onApprove: () => void
 }
 
+/** "More options" disclosure: a button that reveals a short list of buttons. Esc or an outside click closes it. */
+function MoreOptions({ items, run }: { items: { label: string; action: FlagAction }[]; run: (a: FlagAction) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const listId = useId()
+  useEffect(() => {
+    if (!open) return
+    const out = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      ref.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    }
+    document.addEventListener('mousedown', out)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', out)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [open])
+  if (!items.length) return null
+
+  return (
+    <div ref={ref} className="flex flex-col items-center">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={listId}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-small font-medium text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+      >
+        More options
+        <Icon name="chevron-down" width={10} height={6} className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <ul id={listId} className="mt-1 w-full animate-pop rounded-md border border-line bg-menu p-1 shadow-menu">
+          {items.map((item) => (
+            <li key={item.label}>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  run(item.action)
+                }}
+                className="flex h-9 w-full items-center rounded-sm px-2.5 text-left text-small text-ink hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                {item.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 /**
- * "Review with Tally" side panel (Figma 36:6576); empty/waiting states from the prototype code layer.
- * Laid out for one decision at a time (owner request 2026-11-10): progress through the questions, the invoice
- * line in question (same highlight as on the invoice), what Tally noticed, the proposed change as before → after
- * with its dollar impact, the employee's latest reply, then one primary action, secondary actions and a quiet
- * dismiss. Tie-out and activity sit at the bottom, collapsed.
+ * "Review with Tally" side panel (Figma 36:6576; empty/waiting states from the prototype code layer).
+ * Simplified for non-technical reviewers (owner request 2026-11-10): one plain question per flag, the entry,
+ * one sentence of why, before → after numbers, then two equal choices and a "More options" menu. Orange is
+ * reserved for the primary button and the progress bar. All copy comes from flagCopy.ts.
  */
 export function ReviewPanel({ projectId, flags, approved, sent, onKeep, onSend, onExport, onAccept, onEdit, onAsk, onDismiss, onApprove }: ReviewPanelProps) {
   const { store } = useDemo()
@@ -56,8 +94,16 @@ export function ReviewPanel({ projectId, flags, approved, sent, onKeep, onSend, 
   const entry = flag && store.entries.find((e) => e.id === flag.entryId)
   const total = allFlags(store).filter((f) => store.entries.find((e) => e.id === f.entryId)?.projectId === projectId).length
   const done = total - flags.length
+  const remaining = flags.length - 1
   const first = entry?.employee.split(' ')[0]
-  const reply = flag && store.messages.find((m) => m.entryId === flag.entryId)?.replies.filter((r) => r.from === entry?.employee).at(-1)
+  const reply =
+    flag &&
+    store.messages
+      .find((m) => m.entryId === flag.entryId)
+      ?.replies.filter((r) => r.from === entry?.employee)
+      .at(-1)
+  const copy = flag && entry ? flagCopy(store, flag, entry) : undefined
+  const handlers: Record<FlagAction, () => void> = { accept: onAccept, dismiss: onDismiss, keep: onKeep, edit: onEdit, ask: onAsk }
 
   return (
     <aside aria-labelledby="review-panel-title" className="flex flex-col overflow-hidden border-l border-panel-line bg-panel">
@@ -66,174 +112,114 @@ export function ReviewPanel({ projectId, flags, approved, sent, onKeep, onSend, 
           <h2 id="review-panel-title" className="text-lead font-semibold text-ink">
             Review with Tally
           </h2>
-          {total > 0 && (
+          {flags.length > 0 && (
             <span className="text-caption text-ink-muted tabular-nums" aria-live="polite">
-              {flags.length ? `Question ${done + 1} of ${total}` : `All ${total} resolved`}
+              {done + 1} of {total}
             </span>
           )}
         </div>
         {total > 0 && (
-          <div className="mt-2.5 flex gap-1" aria-hidden="true">
-            {Array.from({ length: total }, (_, i) => (
-              <i key={i} className={`h-1 flex-1 rounded-full ${i < done ? 'bg-step-done-ink' : i === done ? 'bg-brand' : 'bg-step-track'}`} />
-            ))}
-          </div>
+          <>
+            <div className="mt-2.5 flex gap-1" aria-hidden="true">
+              {Array.from({ length: total }, (_, i) => (
+                <i key={i} className={`h-1 flex-1 rounded-full ${i <= done && flags.length ? 'bg-brand' : !flags.length ? 'bg-brand' : 'bg-step-track'}`} />
+              ))}
+            </div>
+            {remaining > 0 && <p className="pt-1.5 text-right text-caption text-ink-muted">{remaining} more to review</p>}
+          </>
         )}
       </div>
 
-      {flag && entry ? (
-        <div className="flex flex-col gap-4 p-4">
-          <div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-caption font-semibold text-flag-type">{flag.type}</span>
-              <Pill tone={STATUS_TONE[flag.status]}>{flag.status}</Pill>
-            </div>
-            <h3 className="pt-1.5 text-title-sm font-semibold tracking-flag text-ink">{flag.title}</h3>
-          </div>
+      {/* The decision, then "Tally's reasoning" at the foot; opening it lengthens the page. */}
+      <div className="flex flex-1 flex-col">
+        {flag && entry && copy ? (
+          <div className="flex flex-col gap-4 p-4">
+            <h3 className="text-title-sm font-semibold tracking-flag text-ink">{copy.question}</h3>
 
-          {/* Same yellow as the highlighted line on the invoice, so the two read as one thing. */}
-          <Section label="Invoice line">
-            <div className="rounded-md border border-highlight-line bg-highlight p-3">
-              <div className="flex items-center justify-between gap-2 text-caption text-ink-muted">
-                <span>
-                  {shortDate(entry.date)} · {entry.employee}
-                </span>
-                <b className="text-small font-semibold text-ink tabular-nums">{entry.hours.toFixed(1)} h</b>
-              </div>
+            <div className="rounded-md border border-line bg-surface-muted p-3">
+              <p className="text-caption text-ink-muted">
+                {entry.employee} · {dayText(entry.date)}
+              </p>
               <p className="pt-1 text-small text-ink">“{entry.description}”</p>
             </div>
-          </Section>
 
-          <Section label="What Tally noticed">
-            <p className="text-small leading-flag text-ink">{flag.noticed}</p>
-            <p className="pt-1 text-small leading-flag text-ink-muted">{flag.why}</p>
-          </Section>
+            <p className="text-small leading-flag text-ink">{copy.explanation}</p>
 
-          <Section label="Suggested change">
-            <div className="rounded-md border border-line bg-surface-muted p-3">
-              {flag.change ? (
-                <p className="flex items-center gap-2 text-small">
-                  <span className="text-caption text-ink-muted">{flag.change.field}</span>
-                  <s className="text-ink-muted tabular-nums">{flag.change.from}</s>
-                  <span aria-hidden="true" className="text-ink-muted">
-                    →
-                  </span>
-                  <b className="text-lead font-semibold text-ink tabular-nums">{flag.change.to}</b>
-                  <span className="sr-only">
-                    , change {flag.change.field.toLowerCase()} from {flag.change.from} to {flag.change.to}
-                  </span>
-                </p>
-              ) : (
-                <p className="text-small leading-flag text-ink">{flag.suggestion}</p>
-              )}
-              {flag.impact !== 0 && (
-                <p className="mt-2 flex items-center justify-between border-t border-line-row pt-2 text-caption text-ink-muted">
-                  Invoice impact
-                  <b className="text-small font-semibold text-ink tabular-nums">
-                    {flag.impact > 0 ? '+' : '−'}
-                    {money(Math.abs(flag.impact))}
-                  </b>
-                </p>
-              )}
-            </div>
-          </Section>
+            {copy.rows.length > 0 && (
+              <dl className="rounded-md border border-line bg-white px-3 py-1">
+                {copy.rows.map((row) => (
+                  <div key={row.label} className="flex items-center justify-between gap-3 border-b border-line-row py-2 last:border-b-0">
+                    <dt className="text-caption text-ink-muted">{row.label}</dt>
+                    <dd className="flex items-baseline gap-2 text-small tabular-nums">
+                      {row.after !== undefined ? (
+                        <>
+                          <span className="text-ink-muted">{row.before}</span>
+                          <span aria-hidden="true" className="text-ink-muted">
+                            →
+                          </span>
+                          <span className="sr-only">changes to</span>
+                          <b className="font-semibold text-ink">{row.after}</b>
+                        </>
+                      ) : (
+                        <b className="font-semibold text-ink">{row.before}</b>
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
 
-          {reply && (
-            <Section label={`${first} replied`}>
+            {reply && (
               <div className="flex gap-2 rounded-md bg-bubble p-3">
-                <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full bg-avatar text-caption font-semibold text-avatar-ink">
+                <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full bg-segment text-caption font-semibold text-ink">
                   {initials(reply.from)}
                 </span>
-                <p className="text-small text-ink">{reply.body}</p>
+                <p className="text-small text-ink">
+                  <span className="sr-only">{first} replied: </span>
+                  {reply.body}
+                </p>
               </div>
-            </Section>
-          )}
+            )}
 
-          {flag.status === 'Awaiting employee' ? (
-            <div role="status" className="rounded-md border border-line bg-surface-muted p-3">
-              <b className="block text-small font-semibold text-ink">Waiting on {first}</b>
-              <p className="pt-0.5 text-caption text-ink-muted">The linked request is in Messages.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {flag.kind === 'daily' ? (
-                <button type="button" onClick={onKeep} className={PRIMARY}>
-                  Keep as is (add note)
+            {flag.status === 'Awaiting employee' ? (
+              <div role="status" className="rounded-md border border-line bg-surface-muted p-3">
+                <b className="block text-small font-semibold text-ink">Waiting on {first}</b>
+                <p className="pt-0.5 text-caption text-ink-muted">The question is in Messages.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button type="button" onClick={handlers[copy.primary.action]} className={PRIMARY}>
+                  {copy.primary.label}
                 </button>
-              ) : (
-                <button type="button" onClick={onAccept} className={PRIMARY}>
-                  <Icon name="check-white" size={18} /> Accept suggestion
+                <button type="button" onClick={handlers[copy.secondary.action]} className={SECONDARY}>
+                  {copy.secondary.label}
                 </button>
-              )}
-              <button type="button" onClick={onEdit} className={SECONDARY}>
-                <Icon name="edit" size={18} /> {flag.kind === 'daily' ? 'Edit hours' : 'Edit directly'}
-              </button>
-              <button type="button" onClick={onAsk} className={SECONDARY}>
-                <Icon name="message" size={18} /> Ask employee
-              </button>
-              {flag.kind !== 'daily' && (
-                <button
-                  type="button"
-                  onClick={onDismiss}
-                  className="col-span-2 h-8 rounded-sm text-small font-medium text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-                >
-                  Dismiss flag
-                </button>
-              )}
-            </div>
-          )}
-
-          {flags.length > 1 && (
-            <Section label="Up next">
-              <ul className="flex flex-col gap-1">
-                {flags.slice(1).map((f) => (
-                  <li key={f.id} className="truncate text-caption text-ink-muted">
-                    {f.title}
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
-        </div>
-      ) : (
-        <div className="m-auto p-7.5 text-center" role="status">
-          <span className="mx-auto grid place-items-center">
-            <Icon name="check-done" size={25} />
-          </span>
-          <h3 className="mt-3.5 mb-1.25 text-title-sm font-semibold tracking-title text-ink">{sent ? 'Invoice sent' : approved ? 'Invoice approved' : 'All questions resolved'}</h3>
-          <p className="mb-3.75 text-small leading-normal text-ink-muted">
-            {sent
-              ? 'A simulated send was recorded. No email was delivered.'
-              : approved
-                ? 'The approved invoice is available for preview and export.'
-                : 'Tally recalculated the invoice. One final approval is all that remains.'}
-          </p>
-          {!approved && <DarkButton onClick={onApprove}>Approve Invoice</DarkButton>}
-          {approved && (
-            <div className="flex justify-center gap-2">
-              {!sent && <DarkButton onClick={onSend}>Send to client</DarkButton>}
-              <OutlineButton onClick={onExport}>Export PDF</OutlineButton>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="mt-auto">
-        <TieOutCard projectId={projectId} />
-        <details className="group border-t border-line p-3.5">
-          <summary className="cursor-pointer list-none text-caption text-hero-ink">
-            <span className="inline-block w-2.75 transition-transform group-open:rotate-90" aria-hidden="true">
-              ▸
+                <MoreOptions items={copy.more} run={(a) => handlers[a]()} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="m-auto p-7.5 text-center" role="status">
+            <span className="mx-auto grid place-items-center">
+              <Icon name="check-done" size={25} />
             </span>
-            View Tally activity
-          </summary>
-          {store.audit.slice(0, 5).map((line) => (
-            <p key={line} className="flex items-center gap-1.5 pt-1 text-caption text-activity-ink">
-              <Icon name="check-activity" size={13} />
-              {line}
-            </p>
-          ))}
-        </details>
+            <h3 className="mt-3.5 mb-1.25 text-title-sm font-semibold tracking-title text-ink">
+              {sent ? 'Invoice sent' : approved ? 'Invoice approved' : 'All questions resolved'}
+            </h3>
+            {(sent || !approved) && <p className="mb-3.75 text-small leading-normal text-ink-muted">{sent ? 'Demo only: no email was sent.' : 'Ready for your approval.'}</p>}
+            {!approved && <DarkButton onClick={onApprove}>Approve invoice</DarkButton>}
+            {approved && (
+              <div className={`flex justify-center gap-2 ${sent ? '' : 'mt-2.5'}`}>
+                {!sent && <DarkButton onClick={onSend}>Send to client</DarkButton>}
+                <OutlineButton onClick={onExport}>Export PDF</OutlineButton>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mt-auto">
+          <TallyReasoning projectId={projectId} />
+        </div>
       </div>
     </aside>
   )

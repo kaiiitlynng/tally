@@ -5,11 +5,10 @@ import { Select } from '../../components/Field'
 import { Icon } from '../../components/Icon'
 import { Pill, type PillTone } from '../../components/Pill'
 import { demoImport, demoToday, entryFromRow, partner, projectName } from '../../data/store'
+import { FIRST, TABLE, TABLE_WRAP, TD, TH } from '../../components/tableStyles'
 
 // Column widths from Figma (36:3889): 219.76 / 219.77 / 329.64 / 153.84 px.
 const COLS = ['23.8%', '23.8%', '35.7%', '16.7%']
-const TH = 'h-10.75 bg-table-head text-left align-middle text-caption font-normal text-ink-dim uppercase'
-const TD = 'h-10.75 border-t border-line-mapping align-middle text-small text-ink'
 
 type RowStatus = 'Matched' | 'Confirm match' | 'No matching project'
 const TONE: Record<RowStatus, PillTone> = { Matched: 'success', 'Confirm match': 'accent', 'No matching project': 'danger' }
@@ -56,7 +55,6 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
           replies: [],
         })
       })
-      s.submissions[demoImport.employee] = 'Submitted'
       s.lastSubmitted[demoImport.employee] = demoToday
       s.audit.unshift(`${demoImport.employee} submitted ${ready} Excel ${ready === 1 ? 'entry' : 'entries'}${held.length ? `; ${held.length} held for an unrecognized case` : ''}`)
     })
@@ -73,10 +71,9 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
       <div className="flex items-center justify-between">
         <div>
           <div className="pt-0.5">
-            <Pill tone="success">5 columns detected</Pill>
           </div>
           <h2 id="mapping-title" className="font-semibold pt-2.5 text-title-sm tracking-title text-ink">
-            Confirm column mapping
+            Check the columns
           </h2>
           <p className="pt-0.75 text-caption text-ink-muted">
             {demoImport.fileName} · {summary}
@@ -85,8 +82,8 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
         {!submitted && <DarkButton onClick={submit}>Confirm &amp; submit</DarkButton>}
       </div>
 
-      <div className="mt-4.25 overflow-hidden rounded-md border border-line">
-        <table className="w-full table-fixed border-collapse">
+      <div className={`mt-4.25 ${TABLE_WRAP}`}>
+        <table className={TABLE}>
           <colgroup>
             {COLS.map((w, i) => (
               <col key={i} style={{ width: w }} />
@@ -94,10 +91,10 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
           </colgroup>
           <thead>
             <tr>
-              <th scope="col" className={`${TH} pl-3.25`}>Excel column</th>
+              <th scope="col" className={`${TH} ${FIRST}`}>Excel column</th>
               <th scope="col" className={TH}>Tally field</th>
               <th scope="col" className={TH}>Sample value</th>
-              <th scope="col" className={`${TH} pr-3.25`}>Status</th>
+              <th scope="col" className={TH}>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -105,10 +102,10 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
               const s: RowStatus = c.field === 'Project' ? status(demoImport.rows[0]) : 'Matched'
               return (
                 <tr key={c.column}>
-                  <th scope="row" className={`${TD} pl-3.25 text-left font-normal`}>{c.column}</th>
+                  <th scope="row" className={`${TD} ${FIRST} text-left font-normal`}>{c.column}</th>
                   <td className={TD}>{c.field}</td>
                   <td className={TD}>{c.sample}</td>
-                  <td className={`${TD} pr-3.25`}>
+                  <td className={TD}>
                     <Pill tone={TONE[s]}>{s}</Pill>
                   </td>
                 </tr>
@@ -119,15 +116,15 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
       </div>
 
       <h3 className="mt-4 text-small font-semibold text-ink">Rows in this file</h3>
-      <div className="mt-1.5 overflow-hidden rounded-md border border-line">
-        <table className="w-full table-fixed border-collapse">
+      <div className={`mt-1.5 ${TABLE_WRAP}`}>
+        <table className={TABLE}>
           <thead>
             <tr>
-              <th scope="col" className={`${TH} w-[14%] pl-3.25`}>Date</th>
+              <th scope="col" className={`${TH} w-[14%] ${FIRST}`}>Date</th>
               <th scope="col" className={`${TH} w-[24%]`}>Matter in file</th>
               <th scope="col" className={`${TH} w-[30%]`}>Tally project</th>
               <th scope="col" className={`${TH} w-[10%]`}>Hours</th>
-              <th scope="col" className={`${TH} pr-3.25`}>Status</th>
+              <th scope="col" className={TH}>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -136,11 +133,11 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
               const pid = projectFor(r)
               return (
                 <tr key={r.row}>
-                  <td className={`${TD} pl-3.25`}>{r.date.slice(5).replace('-', '/')}</td>
+                  <td className={`${TD} ${FIRST}`}>{r.date.slice(5).replace('-', '/')}</td>
                   <td className={TD}>{r.matter}</td>
                   <td className={TD}>{pid ? projectName(store, pid) : <span className="text-ink-muted">Held: no match</span>}</td>
                   <td className={TD}>{r.hours.toFixed(1)}</td>
-                  <td className={`${TD} pr-3.25`}>
+                  <td className={TD}>
                     <Pill tone={TONE[s]}>{s}</Pill>
                   </td>
                 </tr>
@@ -219,7 +216,6 @@ export function ColumnMapping({ onReupload, onSubmitted }: { onReupload: () => v
           </span>
           <div>
             <h3 className="text-body font-semibold">Timesheet submitted</h3>
-            <p className="pt-0.75 text-caption text-ink-muted">The imported entry is now in the same dataset as direct entries.</p>
             {submitted.held > 0 && (
               <p className="pt-0.75 text-caption text-ink-muted">
                 {submitted.held} {submitted.held === 1 ? 'row is' : 'rows are'} held until {role === 'employee' ? 'Vanessa maps it' : 'it is mapped'} to a project.

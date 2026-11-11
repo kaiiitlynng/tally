@@ -53,7 +53,7 @@ export function ProjectDrawer({ project, onClose }: { project: Project; onClose:
         ))}
       </dl>
       <div className="mt-5.25">
-        <small className="block text-caption tracking-meta text-ink-meta-soft">ASSIGNED TEAM</small>
+        <small className="block text-caption tracking-meta text-ink-meta-soft">Assigned team</small>
         <ul>
           {project.people.map((person) => (
             <li key={person} className="grid grid-cols-[34px_1fr_auto] items-center gap-2.25 border-b border-drawer-row py-2.25">

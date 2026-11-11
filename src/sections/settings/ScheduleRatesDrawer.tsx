@@ -4,15 +4,14 @@ import { useDemo } from '../../components/DemoContext'
 import { Icon } from '../../components/Icon'
 import { Dialog } from '../../components/Modal'
 import { initials, money } from '../../data/store'
+import { FIRST, ROW, TABLE, TABLE_WRAP, TD, TH } from '../../components/tableStyles'
 
 const INPUT = 'h-8 w-22 rounded-sm border border-line bg-white px-2 text-small focus:outline-2 focus:outline-accent'
 
 /** "Schedule 2026 rates" side panel (spec item 6). Effective date is fixed to Jan 1, 2026. */
 export function ScheduleRatesDrawer({ onClose }: { onClose: () => void }) {
   const { store, update, me } = useDemo()
-  const [rates, setRates] = useState<Record<string, string>>(() =>
-    Object.fromEntries(Object.entries(store.rates).map(([n, r]) => [n, String(store.scheduledRates[n] ?? r)])),
-  )
+  const [rates, setRates] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(store.rates).map(([n, r]) => [n, String(store.scheduledRates[n] ?? r)])))
   const [pct, setPct] = useState('5')
   const valid = Object.values(rates).every((r) => Number(r) > 0)
 
@@ -56,37 +55,51 @@ export function ScheduleRatesDrawer({ onClose }: { onClose: () => void }) {
         </OutlineButton>
       </div>
 
-      <table className="mt-4 w-full text-small">
-        <thead>
-          <tr className="text-left text-caption text-ink-th uppercase">
-            <th className="pb-2 font-normal">Employee</th>
-            <th className="pb-2 font-normal">Current</th>
-            <th className="pb-2 font-normal">New rate</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(store.rates).map(([name, rate]) => (
-            <tr key={name} className="border-t border-drawer-row">
-              <th scope="row" className="py-2.25 text-left font-semibold">
-                <span className="flex items-center gap-2">
-                  <span aria-hidden="true" className="grid size-7 place-items-center rounded-full bg-teammate text-caption font-normal">
-                    {initials(name)}
-                  </span>
-                  {name}
-                </span>
+      <div className={`mt-4 ${TABLE_WRAP}`}>
+        <table className={TABLE}>
+          <thead>
+            <tr>
+              <th scope="col" className={`${TH} ${FIRST}`}>
+                Employee
               </th>
-              <td className="py-2.25">{money(rate)}</td>
-              <td className="py-2.25">
-                <label className="flex items-center gap-1">
-                  <span aria-hidden="true">$</span>
-                  <span className="sr-only">New 2026 rate for {name}, dollars per hour</span>
-                  <input inputMode="decimal" value={rates[name]} aria-invalid={!(Number(rates[name]) > 0)} onChange={(e) => setRates({ ...rates, [name]: e.target.value })} className={`${INPUT} aria-invalid:border-error-line`} />
-                </label>
-              </td>
+              <th scope="col" className={TH}>
+                Current
+              </th>
+              <th scope="col" className={TH}>
+                New rate
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Object.entries(store.rates).map(([name, rate]) => (
+              <tr key={name} className={ROW}>
+                <th scope="row" className={`${TD} ${FIRST} text-left font-semibold`}>
+                  <span className="flex items-center gap-2">
+                    <span aria-hidden="true" className="grid size-7 place-items-center rounded-full bg-teammate text-caption font-normal">
+                      {initials(name)}
+                    </span>
+                    {name}
+                  </span>
+                </th>
+                <td className={TD}>{money(rate)}</td>
+                <td className={TD}>
+                  <label className="flex items-center gap-1">
+                    <span aria-hidden="true">$</span>
+                    <span className="sr-only">New 2026 rate for {name}, dollars per hour</span>
+                    <input
+                      inputMode="decimal"
+                      value={rates[name]}
+                      aria-invalid={!(Number(rates[name]) > 0)}
+                      onChange={(e) => setRates({ ...rates, [name]: e.target.value })}
+                      className={`${INPUT} aria-invalid:border-error-line`}
+                    />
+                  </label>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <dl className="mt-4 flex justify-between border-t border-line pt-3 text-small">
         <dt className="text-ink-muted">Effective date</dt>

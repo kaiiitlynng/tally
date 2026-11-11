@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { Link, useSearchParams } from 'react-router'
 import { DarkButton, OutlineButton } from '../components/Button'
 import { Field, SegmentedRadio, TextInput } from '../components/Field'
 import { ScheduleRatesDrawer } from '../sections/settings/ScheduleRatesDrawer'
@@ -7,18 +8,20 @@ import { useDemo } from '../components/DemoContext'
 import { Icon } from '../components/Icon'
 import { PageTitle } from '../components/PageTitle'
 import { Switch } from '../components/Switch'
+import { FIRST, ROW as TABLE_ROW, TABLE, TABLE_WRAP, TD, TH } from '../components/tableStyles'
 import { onTabListKeyDown } from '../components/tabKeys'
 import { initials, money, type TeamMember } from '../data/store'
 
-const TABS = ['Billing rules', 'AI preferences', 'Team', 'Integrations', 'Data & privacy'] as const
+const TABS = ['Billing rules', 'AI preferences', 'Team', 'Notifications', 'Integrations', 'Data & privacy'] as const
 type Tab = (typeof TABS)[number]
 
 const INTRO: Record<Tab, string> = {
   'Billing rules': 'Rates apply based on the work date. Existing entries keep their historical rate.',
-  'AI preferences': 'Tally uses deterministic math for amounts and AI only for language and ambiguous matching.',
+  'AI preferences': 'Tally calculates amounts with math. AI only reads descriptions and project names.',
   'Team': 'Employees only see assigned projects, their own entries, and billing requests sent to them.',
-  Integrations: 'These connections are optional. External delivery is not active in this prototype.',
-  'Data & privacy': 'Prototype controls below explain intended choices; they do not claim production security safeguards.',
+  Notifications: '',
+  Integrations: '',
+  'Data & privacy': "Demo only: these aren't production security controls.",
 }
 
 const AVATAR = 'grid size-7 shrink-0 place-items-center rounded-full bg-teammate text-caption'
@@ -27,9 +30,8 @@ const ROW = 'flex items-center gap-2.5 border-b border-line-row py-3.25'
 function BillingRules() {
   const { store, update } = useDemo()
   // Column widths from Figma (36:9839): 237.59 / 158.41 / 158.40 / 138.60 px.
-  const cols = ['34.3%', '22.9%', '22.9%', '20%']
-  const TH = 'h-8.5 bg-table-head text-left align-middle text-caption font-normal text-ink-dim uppercase'
-  const TD = 'h-12.25 border-t border-line-row align-middle text-small text-ink'
+  // "Optional override" column removed (owner request 2026-11-10).
+  const cols = ['40%', '32%', '28%']
 
   const [scheduling, setScheduling] = useState(false)
   const scheduled = Object.keys(store.scheduledRates).length > 0
@@ -48,8 +50,8 @@ function BillingRules() {
         {scheduled && <p className="text-caption text-ink-muted">Time worked before Jan 1 keeps 2025 rates.</p>}
       </div>
       {scheduling && <ScheduleRatesDrawer onClose={() => setScheduling(false)} />}
-      <div className="mt-3 overflow-hidden rounded-md border border-line">
-        <table className="w-full table-fixed border-collapse">
+      <div className={`mt-3 ${TABLE_WRAP}`}>
+        <table className={TABLE}>
           <colgroup>
             {cols.map((w, i) => (
               <col key={i} style={{ width: w }} />
@@ -57,16 +59,15 @@ function BillingRules() {
           </colgroup>
           <thead>
             <tr>
-              <th scope="col" className={`${TH} pl-3`}>Employee</th>
+              <th scope="col" className={`${TH} ${FIRST}`}>Employee</th>
               <th scope="col" className={TH}>Standard rate</th>
               <th scope="col" className={TH}>Effective date</th>
-              <th scope="col" className={`${TH} pr-3`}>Optional override</th>
             </tr>
           </thead>
           <tbody>
             {store.team.map(({ name }) => [name, store.rates[name]] as const).map(([name, rate]) => (
-              <tr key={name} className="transition-colors duration-150 hover:bg-hover">
-                <th scope="row" className={`${TD} pl-3 text-left`}>
+              <tr key={name} className={TABLE_ROW}>
+                <th scope="row" className={`${TD} ${FIRST} text-left`}>
                   <span className="flex items-center gap-2">
                     <span className={`${AVATAR} font-normal`} aria-hidden="true">
                       {initials(name)}
@@ -98,12 +99,6 @@ function BillingRules() {
                   )}
                 </td>
                 <td className={TD}>Jan 1, 2025</td>
-                <td className={`${TD} pr-3`}>
-                  {/* Inert in the prototype code layer too; no project-override flow is designed. */}
-                  <button type="button" className="rounded-md text-caption underline hover:text-link focus-visible:outline-2 focus-visible:outline-accent">
-                    Set by project
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -112,9 +107,9 @@ function BillingRules() {
       <div className="flex items-center gap-4 border-b border-line-row py-3.75">
         <span className="flex-1">
           <b id="threshold-label" className="block text-small font-semibold">
-            Daily-hours warning threshold
+            Daily hours limit
           </b>
-          <small className="block pt-0.75 text-caption text-ink-muted">Checks each person's total across all projects for a day.</small>
+          <small className="block pt-0.75 text-caption text-ink-muted">Counts all of a person's projects that day.</small>
         </span>
         <div className="w-60">
           <SegmentedRadio
@@ -160,9 +155,7 @@ function AiPreferences() {
             <b id={`ai-${i}`} className="block text-small font-semibold">
               {c}
             </b>
-            <small className="block pt-0.75 text-caption text-ink-muted">
-              {i === 0 ? `Current threshold: ${store.threshold} hours` : 'Require human review before invoice changes'}
-            </small>
+            {i === 0 && <small className="block pt-0.75 text-caption text-ink-muted">Over {store.threshold} hours a day</small>}
           </span>
           <Switch checked={enabled[c]} labelledBy={`ai-${i}`} onChange={(v) => setEnabled((x) => ({ ...x, [c]: v }))} />
         </div>
@@ -203,7 +196,6 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
     update((s) => {
       s.team.push(member)
       s.rates[member.name] = Number(rate)
-      s.submissions[member.name] = 'Due soon'
       s.audit.unshift(`${me.firstName} added ${member.name} as ${role === 'Partner' ? 'a partner' : 'an employee'}`)
     })
     toast(`${member.name} added to the team`)
@@ -244,7 +236,6 @@ function Team() {
     const { name } = removing
     update((s) => {
       s.team = s.team.filter((m) => m.name !== name)
-      delete s.submissions[name]
       s.audit.unshift(`${me.firstName} removed ${name} from the team`)
     })
     toast(`${name} removed from the team`)
@@ -317,13 +308,61 @@ function Team() {
   )
 }
 
+/** Reminder channels (moved here from Manage Team, owner request 2026-11-10). Email needs Gmail connected first. */
+function Notifications() {
+  const { store, update } = useDemo()
+  const emailReady = store.gmailConnected
+  const set = (key: 'inApp' | 'email', v: boolean) =>
+    update((s) => {
+      s.reminderChannels[key] = v
+    })
+  return (
+    <div className="mt-5.5">
+      <div className={ROW}>
+        <b id="channel-inApp" className="flex-1 text-small font-semibold">
+          In-app notifications
+        </b>
+        <Switch checked={store.reminderChannels.inApp} labelledBy="channel-inApp" onChange={(v) => set('inApp', v)} />
+      </div>
+      <div className={ROW}>
+        <div className={`flex-1 ${emailReady ? '' : 'opacity-50'}`}>
+          <b id="channel-email" className="block text-small font-semibold">
+            Email notifications
+          </b>
+        </div>
+        <span className={emailReady ? '' : 'opacity-50'}>
+          <Switch checked={store.reminderChannels.email && emailReady} disabled={!emailReady} labelledBy="channel-email" describedBy={emailReady ? undefined : 'email-needs-gmail'} onChange={(v) => set('email', v)} />
+        </span>
+      </div>
+      {!emailReady && (
+        <p id="email-needs-gmail" className="pt-3 text-small text-ink-muted">
+          To send reminders by email, connect Gmail first.{' '}
+          <Link to="/settings?tab=integrations" className="rounded-xs font-semibold text-link hover:underline focus-visible:outline-2 focus-visible:outline-accent">
+            Go to Integrations
+          </Link>
+        </p>
+      )}
+    </div>
+  )
+}
+
 function Integrations() {
+  const { store, update, toast } = useDemo()
   // Calendar sits above QuickBooks; QuickBooks is a future capability, so its control is muted and inert.
   const items = [
-    ['Email', 'In-app works · external email demo only', 'integration-gmail'],
+    ['Email', store.gmailConnected ? 'Connected · sends invoices to clients and reminders to your team' : 'Send invoices to clients and reminders to your team', 'integration-gmail'],
     ['Calendar', 'Optional context for missing time', 'integration-google-calendar'],
-    ['QuickBooks', 'Future capability', 'integration-quickbooks'],
+    ['QuickBooks', 'Coming later', 'integration-quickbooks'],
   ]
+  // Gmail is the one connection the prototype simulates: connecting enables email notifications in Notifications.
+  function toggleGmail() {
+    const connect = !store.gmailConnected
+    update((s) => {
+      s.gmailConnected = connect
+      if (!connect) s.reminderChannels.email = false
+    })
+    toast(connect ? 'Gmail connected. Turn on email notifications in Notifications.' : 'Gmail disconnected')
+  }
   return (
     <div className="mt-5.5">
       {items.map(([name, hint, icon]) => (
@@ -336,10 +375,17 @@ function Integrations() {
             <b className="block text-small font-semibold">{name}</b>
             <small className="block pt-0.75 text-caption text-ink-muted">{hint}</small>
           </div>
-          {/* Connections are not available in the prototype. */}
-          <OutlineButton aria-label={`${name}: not connected`} disabled={name === 'QuickBooks'} className={name === 'QuickBooks' ? 'opacity-50' : ''}>
-            Not connected
-          </OutlineButton>
+          {name === 'Email' ? (
+            // Same wording as the other rows: the label is the state; clicking it connects or disconnects.
+            <OutlineButton onClick={toggleGmail} aria-label={store.gmailConnected ? 'Email: connected. Select to disconnect' : 'Email: not connected. Select to connect Gmail'}>
+              {store.gmailConnected ? 'Connected' : 'Not connected'}
+            </OutlineButton>
+          ) : (
+            // Calendar and QuickBooks connections are not available in the prototype.
+            <OutlineButton aria-label={`${name}: not connected`} disabled={name === 'QuickBooks'} className={name === 'QuickBooks' ? 'opacity-50' : ''}>
+              Not connected
+            </OutlineButton>
+          )}
         </div>
       ))}
     </div>
@@ -451,18 +497,22 @@ const PANELS: Record<Tab, () => ReactNode> = {
   'Billing rules': BillingRules,
   'AI preferences': AiPreferences,
   Team,
+  Notifications,
   Integrations,
   'Data & privacy': DataPrivacy,
 }
 
 /** Settings (Figma 36:9778 / 36:10273 / 36:10647 / 36:11056; AI preferences from the code layer). */
 export default function Settings() {
-  const [tab, setTab] = useState<Tab>('Billing rules')
+  // The tab lives in the URL (?tab=integrations), so links from other pages and other tabs can open a section.
+  const [params, setParams] = useSearchParams()
+  const tab: Tab = TABS.find((t) => t.toLowerCase() === params.get('tab')) ?? 'Billing rules'
+  const setTab = (t: Tab) => setParams(t === 'Billing rules' ? {} : { tab: t.toLowerCase() }, { replace: true })
   const Panel = PANELS[tab]
 
   return (
     <>
-      <PageTitle title="Settings" description="Plain-language controls for billing, review, access, and connected services." />
+      <PageTitle title="Settings" />
       <div className="grid grid-cols-[210px_1fr] gap-3.5 pt-6">
         <div role="tablist" aria-orientation="vertical" aria-label="Settings sections" onKeyDown={onTabListKeyDown} className="flex flex-col self-start rounded-lg border border-line bg-surface-faint p-1.75">
           {TABS.map((t) => (
@@ -484,7 +534,7 @@ export default function Settings() {
         </div>
         <section id="settings-panel" role="tabpanel" aria-labelledby={`settings-tab-${tab}`} className="min-h-155 rounded-lg border border-line bg-surface shadow-card p-6.25">
           <h2 className="text-title tracking-title font-semibold text-ink">{tab}</h2>
-          <p className="pt-1.25 text-small text-ink-muted">{INTRO[tab]}</p>
+          {INTRO[tab] && <p className="pt-1.25 text-small text-ink-muted">{INTRO[tab]}</p>}
           <Panel />
         </section>
       </div>

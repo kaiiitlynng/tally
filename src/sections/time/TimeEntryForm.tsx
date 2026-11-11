@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { DarkButton, OutlineButton } from '../../components/Button'
 import { useDemo } from '../../components/DemoContext'
-import { SectionHeading } from '../../components/SectionHeading'
 import { useCommitEntry } from '../../hooks/useCommitEntry'
-import { currentPeriod, entryWarnings, money, periodDefaultDate, validateEntry, type EntryForm, type EntryWarning, type FormErrors } from '../../data/store'
+import { currentPeriod, entryWarnings, money, periodDefaultDate, prefsFor, validateEntry, type EntryForm, type EntryWarning, type FormErrors } from '../../data/store'
 import { EntryFields, focusFirstError } from './EntryFields'
 import { WarningConfirm } from './WarningConfirm'
 
@@ -18,12 +17,14 @@ export function TimeEntryForm({ initialProjectId, onSaved }: { initialProjectId?
   const commit = useCommitEntry()
   const projects = store.projects.filter((p) => role === 'partner' || p.people.includes(me.name))
 
+  // Employees' Settings can set a default project and billing treatment.
+  const prefs = prefsFor(store, me.name)
   const blank = (): EntryForm => ({
     date: role === 'employee' ? periodDefaultDate(currentPeriod) : '2025-05-28',
-    projectId: initialProjectId ?? projects[0]?.id ?? '',
+    projectId: initialProjectId ?? (projects.some((p) => p.id === prefs.defaultProjectId) ? prefs.defaultProjectId : (projects[0]?.id ?? '')),
     hours: '',
     description: '',
-    billable: true,
+    billable: prefs.billable,
   })
 
   const [form, setForm] = useState<EntryForm>(blank)
@@ -33,7 +34,7 @@ export function TimeEntryForm({ initialProjectId, onSaved }: { initialProjectId?
 
   function finish(submit: boolean, acknowledged: EntryWarning[]) {
     commit(form, submit, acknowledged)
-    onSaved(submit ? 'Time entry submitted successfully.' : 'Draft saved. You can finish it later.')
+    onSaved(submit ? 'Time submitted.' : 'Draft saved.')
     setForm(blank())
     setErrors({})
     setWarnings([])
@@ -67,7 +68,6 @@ export function TimeEntryForm({ initialProjectId, onSaved }: { initialProjectId?
       aria-labelledby="new-entry"
       className="rounded-lg border border-line bg-surface shadow-card p-5"
     >
-      <SectionHeading id="new-entry" title="New time entry" description="Choose from assigned projects to keep names consistent." />
       <div className="pt-2.5">
         <EntryFields
           idPrefix={ID}

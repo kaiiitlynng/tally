@@ -43,6 +43,6 @@ export function SegmentedTabs<T extends string>({
 
 /** "Current Projects" / "Past Projects" (Figma 36:11817 / 36:12137), shared by My Projects and Clients & Projects. */
 export const PROJECT_TABS = [
-  { id: 'current', label: 'Current Projects' },
-  { id: 'past', label: 'Past Projects' },
+  { id: 'current', label: 'Current projects' },
+  { id: 'past', label: 'Past projects' },
 ] as const

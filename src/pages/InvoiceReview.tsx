@@ -4,7 +4,7 @@ import { DarkButton, DarkLinkButton, OutlineButton } from '../components/Button'
 import { uid, useDemo } from '../components/DemoContext'
 import { Icon } from '../components/Icon'
 import { Disclaimer, Modal } from '../components/Modal'
-import { addReply, demoToday, isFinal, openFlagsFor, setFlagStatus, snapshotForReview, type Flag } from '../data/store'
+import { addReply, completeness, demoToday, notify, isFinal, openFlagsFor, setFlagStatus, snapshotForReview, type Flag } from '../data/store'
 import { InvoiceDocument } from '../sections/review/InvoiceDocument'
 import { ReviewPanel } from '../sections/review/ReviewPanel'
 import { SendInvoiceModal } from '../sections/review/SendInvoiceModal'
@@ -27,6 +27,8 @@ export default function InvoiceReview() {
 
   const project = store.projects.find((p) => p.id === invoiceId)
   if (!project) return <Navigate to="/review" replace />
+  // Not reviewable until all its time is in; Clients & Projects shows who it's waiting on.
+  if (completeness(store, invoiceId) === 'Time missing') return <Navigate to="/clients" replace />
 
   const flags = openFlagsFor(store, invoiceId)
   const flag = flags[0]
@@ -39,11 +41,12 @@ export default function InvoiceReview() {
     if (!flag) return
     update((s) => {
       setFlagStatus(s, flag.id, decision === 'accept' ? 'Resolved' : 'Dismissed')
-      if (decision === 'accept' && flag.id === 'f1') {
+      // Accepting a proposed hours change applies it (the original is kept for the "Edited by" marker).
+      if (decision === 'accept' && flag.change?.field === 'Hours') {
         const entry = s.entries.find((e) => e.id === flag.entryId)!
         snapshotForReview(entry, me.initials)
         entry.original = `${entry.hours} hours`
-        entry.hours = 2
+        entry.hours = Number(flag.change.to)
       }
       s.audit.unshift(`${me.firstName} ${decision === 'accept' ? 'accepted' : 'dismissed'}: ${flag.title}`)
       settle(s)
@@ -92,6 +95,7 @@ export default function InvoiceReview() {
           replies: [],
         })
       s.invoiceStatus[invoiceId] = 'Awaiting employee'
+      notify(s, entry.employee, `${me.firstName} asked about your ${entry.date.slice(5)} entry`, '/messages')
       s.audit.unshift(`${me.firstName} asked ${entry.employee} about a linked entry`)
     })
     setAsk(null)
@@ -141,7 +145,7 @@ export default function InvoiceReview() {
           <OutlineButton onClick={() => navigate('/review')}>Save &amp; close</OutlineButton>
           {!flags.length && !approved && (
             <DarkButton onClick={approve}>
-              Approve Invoice <Icon name="check-white" size={18} />
+              Approve invoice <Icon name="check-white" size={18} />
             </DarkButton>
           )}
           {approved && <DarkLinkButton to="/invoices">View in Approved Invoices</DarkLinkButton>}
@@ -168,37 +172,36 @@ export default function InvoiceReview() {
           }}
           onApprove={approve}
           onSend={() => setSending(true)}
-          onExport={() => toast('PDF export prepared in the demo')}
+          onExport={() => toast('PDF exported (demo)')}
         />
       </div>
 
       {ask && (
-        <Modal title="Ask employee" confirmLabel="Send request" onConfirm={sendAsk} onClose={() => setAsk(null)}>
+        <Modal title={`Ask ${entryFor(ask).employee.split(' ')[0]}`} confirmLabel="Send question" onConfirm={sendAsk} onClose={() => setAsk(null)}>
           <p className="mb-3 text-small text-ink-muted">
             To <b className="font-semibold text-ink">{entryFor(ask).employee}</b> · {entryFor(ask).date}
           </p>
           <label className={LABEL}>
             Message
-            <textarea value={askText} onChange={(e) => setAskText(e.target.value)} placeholder="Explain what needs clarification…" className={`${CONTROL} min-h-21.25 resize-y`} />
+            <textarea value={askText} onChange={(e) => setAskText(e.target.value)} placeholder={`What should ${entryFor(ask).employee.split(' ')[0]} check?`} className={`${CONTROL} min-h-21.25 resize-y`} />
           </label>
         </Modal>
       )}
 
       {edit && (
-        <Modal title="Edit entry" confirmLabel="Save correction" onConfirm={applyEdit} onClose={() => setEdit(null)}>
+        <Modal title="Edit hours" confirmLabel="Save hours" onConfirm={applyEdit} onClose={() => setEdit(null)}>
           <label className={`${LABEL} mt-4`}>
-            Billable hours
+            Hours
             <input type="number" step="0.1" min="0" value={editHours} onChange={(e) => setEditHours(e.target.value)} className={CONTROL} />
           </label>
-          <Disclaimer>The original value will remain in the change history.</Disclaimer>
+          <Disclaimer>The original hours are kept.</Disclaimer>
         </Modal>
       )}
 
       {keep && (
-        <Modal title="Keep as is" confirmLabel="Keep hours" onConfirm={keepAsIs} onClose={() => setKeep(null)}>
-          <p className="mt-2 text-small text-ink-muted">{keep.title}</p>
+        <Modal title="Keep these hours?" confirmLabel="Keep hours" onConfirm={keepAsIs} onClose={() => setKeep(null)}>
           <label className={`${LABEL} mt-4`}>
-            Note for the record (optional)
+            Note (optional)
             <textarea
               value={keepNote}
               onChange={(e) => setKeepNote(e.target.value)}
@@ -206,7 +209,6 @@ export default function InvoiceReview() {
               className={`${CONTROL} min-h-21.25 resize-y`}
             />
           </label>
-          <Disclaimer>The note is saved to Tally activity.</Disclaimer>
         </Modal>
       )}
 

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 interface PageTitleProps {
   title: string
-  description: string
+  description?: string
   actions?: ReactNode
 }
 
@@ -17,7 +17,7 @@ export function PageTitle({ title, description, actions }: PageTitleProps) {
     <div className="flex items-end justify-between gap-6 pb-2">
       <div className="min-w-0">
         <h1 className="text-display font-semibold tracking-display text-ink">{title}</h1>
-        <p className="max-w-160 pt-2 text-lead text-ink-muted">{description}</p>
+        {description && <p className="max-w-160 pt-2 text-lead text-ink-muted">{description}</p>}
       </div>
       {actions}
     </div>
