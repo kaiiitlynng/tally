@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 /**
  * Tally asterisk mark: 8 rounded 3×10 bars around the centre of a 25px box
  * (Figma 36:291 — built from shapes in Figma, not an exported asset).
@@ -5,9 +7,10 @@
  */
 const ANGLES = [0, 45, 90, 135, 180, 225, 270, 315]
 
+/** Links to Home (owner request 2026-11-10). */
 export function Logo() {
   return (
-    <span className="group flex items-center gap-2.5 px-3 pb-7">
+    <Link to="/" aria-label="Tally home" className="group mb-7 flex w-fit items-center gap-2.5 rounded-sm px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
       {/* Mark turns an eighth on hover: a small, Stripe-like moment of play. */}
       <span className="relative size-6.25 shrink-0 transition-transform duration-500 ease-out-expo group-hover:rotate-45 motion-reduce:transition-none" aria-hidden="true">
         {ANGLES.map((deg) => (
@@ -20,6 +23,6 @@ export function Logo() {
         ))}
       </span>
       <span className="text-title font-semibold tracking-title text-ink">tally</span>
-    </span>
+    </Link>
   )
 }

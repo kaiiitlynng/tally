@@ -1,5 +1,5 @@
 import { PageTitle } from '../components/PageTitle'
-import { partner } from '../data/store'
+import { useDemo } from '../components/DemoContext'
 import { NextStepHero } from '../sections/home/NextStepHero'
 import { RemindTeamCard } from '../sections/home/RemindTeamCard'
 import { StartActions } from '../sections/home/StartActions'
@@ -11,10 +11,11 @@ import { StartActions } from '../sections/home/StartActions'
  * (2026-11-10); unmatched imported rows now live on Time Entries.
  */
 export default function PartnerHome() {
+  const { me } = useDemo()
   return (
     <>
       <PageTitle
-        title={`Good morning, ${partner.firstName}.`}
+        title={`Good morning, ${me.firstName}.`}
       />
       <div className="pt-6">
         <StartActions />

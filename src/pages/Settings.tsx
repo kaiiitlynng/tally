@@ -1,28 +1,17 @@
 import { useState, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import { DarkButton, OutlineButton } from '../components/Button'
 import { Field, SegmentedRadio, TextInput } from '../components/Field'
 import { ScheduleRatesDrawer } from '../sections/settings/ScheduleRatesDrawer'
 import { Disclaimer, Modal } from '../components/Modal'
 import { useDemo } from '../components/DemoContext'
 import { Icon } from '../components/Icon'
-import { PageTitle } from '../components/PageTitle'
 import { Switch } from '../components/Switch'
 import { FIRST, ROW as TABLE_ROW, TABLE, TABLE_WRAP, TD, TH } from '../components/tableStyles'
-import { onTabListKeyDown } from '../components/tabKeys'
-import { initials, money, type TeamMember } from '../data/store'
+import { initials, money, prefsFor, type TeamMember } from '../data/store'
+import { ProfilePanel } from '../sections/settings/ProfilePanel'
+import { SettingsLayout } from '../sections/settings/SettingsLayout'
 
-const TABS = ['Billing rules', 'AI preferences', 'Team', 'Notifications', 'Integrations', 'Data & privacy'] as const
-type Tab = (typeof TABS)[number]
-
-const INTRO: Record<Tab, string> = {
-  'Billing rules': 'Rates apply based on the work date. Existing entries keep their historical rate.',
-  'AI preferences': 'Tally calculates amounts with math. AI only reads descriptions and project names.',
-  'Team': 'Employees only see assigned projects, their own entries, and billing requests sent to them.',
-  Notifications: '',
-  Integrations: '',
-  'Data & privacy': "Demo only: these aren't production security controls.",
-}
 
 const AVATAR = 'grid size-7 shrink-0 place-items-center rounded-full bg-teammate text-caption'
 const ROW = 'flex items-center gap-2.5 border-b border-line-row py-3.25'
@@ -309,34 +298,60 @@ function Team() {
 }
 
 /** Reminder channels (moved here from Manage Team, owner request 2026-11-10). Email needs Gmail connected first. */
+/**
+ * Notifications, split by channel (owner request 2026-11-10): In-app (the bell and team reminders inside Tally)
+ * and Email (to inboxes; needs Gmail connected in Integrations, and nothing is actually sent in the demo).
+ */
 function Notifications() {
-  const { store, update } = useDemo()
+  const { store, update, me } = useDemo()
   const emailReady = store.gmailConnected
-  const set = (key: 'inApp' | 'email', v: boolean) =>
+  const mine = prefsFor(store, me.name)
+  const setChannel = (key: 'inApp' | 'email', v: boolean) =>
     update((s) => {
       s.reminderChannels[key] = v
     })
+  const HEAD = 'text-small font-semibold text-ink-muted'
   return (
     <div className="mt-5.5">
+      <h3 className={HEAD}>In-app</h3>
       <div className={ROW}>
-        <b id="channel-inApp" className="flex-1 text-small font-semibold">
-          In-app notifications
-        </b>
-        <Switch checked={store.reminderChannels.inApp} labelledBy="channel-inApp" onChange={(v) => set('inApp', v)} />
-      </div>
-      <div className={ROW}>
-        <div className={`flex-1 ${emailReady ? '' : 'opacity-50'}`}>
-          <b id="channel-email" className="block text-small font-semibold">
-            Email notifications
+        <span className="flex-1">
+          <b id="channel-inApp" className="block text-small font-semibold">
+            Send team reminders in-app
           </b>
-        </div>
-        <span className={emailReady ? '' : 'opacity-50'}>
-          <Switch checked={store.reminderChannels.email && emailReady} disabled={!emailReady} labelledBy="channel-email" describedBy={emailReady ? undefined : 'email-needs-gmail'} onChange={(v) => set('email', v)} />
+          <small className="block pt-0.5 text-caption text-ink-muted">Shows in each person&apos;s notification bell</small>
         </span>
+        <Switch checked={store.reminderChannels.inApp} labelledBy="channel-inApp" onChange={(v) => setChannel('inApp', v)} />
+      </div>
+
+      <h3 className={`${HEAD} pt-6`}>Email</h3>
+      {/* Your own notifications go to your account email, so this works without Gmail; only team reminders need it. */}
+      <div className={ROW}>
+        <span className="flex-1">
+          <b id="my-email" className="block text-small font-semibold">
+            Email me notifications
+          </b>
+          <small className="block pt-0.5 text-caption text-ink-muted">Sent to {store.team.find((m) => m.name === me.name)?.email}</small>
+        </span>
+        <Switch
+          checked={mine.emailCopies}
+          labelledBy="my-email"
+          onChange={(v) =>
+            update((s) => {
+              s.memberPrefs[me.name] = { ...prefsFor(s, me.name), emailCopies: v }
+            })
+          }
+        />
+      </div>
+      <div className={`${ROW} ${emailReady ? '' : 'opacity-50'}`}>
+        <b id="channel-email" className="flex-1 text-small font-semibold">
+          Send team reminders by email
+        </b>
+        <Switch checked={store.reminderChannels.email && emailReady} disabled={!emailReady} labelledBy="channel-email" describedBy={emailReady ? undefined : 'email-needs-gmail'} onChange={(v) => setChannel('email', v)} />
       </div>
       {!emailReady && (
         <p id="email-needs-gmail" className="pt-3 text-small text-ink-muted">
-          To send reminders by email, connect Gmail first.{' '}
+          To send team reminders by email, connect Gmail first.{' '}
           <Link to="/settings?tab=integrations" className="rounded-xs font-semibold text-link hover:underline focus-visible:outline-2 focus-visible:outline-accent">
             Go to Integrations
           </Link>
@@ -493,51 +508,19 @@ function DataPrivacy() {
   )
 }
 
-const PANELS: Record<Tab, () => ReactNode> = {
-  'Billing rules': BillingRules,
-  'AI preferences': AiPreferences,
-  Team,
-  Notifications,
-  Integrations,
-  'Data & privacy': DataPrivacy,
-}
-
-/** Settings (Figma 36:9778 / 36:10273 / 36:10647 / 36:11056; AI preferences from the code layer). */
+/** Settings (Figma 36:9778 / 36:10273 / 36:10647 / 36:11056; AI preferences from the code layer; Profile added 2026-11-10). */
 export default function Settings() {
-  // The tab lives in the URL (?tab=integrations), so links from other pages and other tabs can open a section.
-  const [params, setParams] = useSearchParams()
-  const tab: Tab = TABS.find((t) => t.toLowerCase() === params.get('tab')) ?? 'Billing rules'
-  const setTab = (t: Tab) => setParams(t === 'Billing rules' ? {} : { tab: t.toLowerCase() }, { replace: true })
-  const Panel = PANELS[tab]
-
   return (
-    <>
-      <PageTitle title="Settings" />
-      <div className="grid grid-cols-[210px_1fr] gap-3.5 pt-6">
-        <div role="tablist" aria-orientation="vertical" aria-label="Settings sections" onKeyDown={onTabListKeyDown} className="flex flex-col self-start rounded-lg border border-line bg-surface-faint p-1.75">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              role="tab"
-              id={`settings-tab-${t}`}
-              aria-selected={tab === t}
-              tabIndex={tab === t ? 0 : -1}
-              aria-controls="settings-panel"
-              onClick={() => setTab(t)}
-              className={`h-10 rounded-sm px-3 text-left text-body transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent ${
-                tab === t ? 'bg-brand-50 font-semibold text-brand' : 'text-ink-muted hover:bg-hover hover:text-ink'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-        <section id="settings-panel" role="tabpanel" aria-labelledby={`settings-tab-${tab}`} className="min-h-155 rounded-lg border border-line bg-surface shadow-card p-6.25">
-          <h2 className="text-title tracking-title font-semibold text-ink">{tab}</h2>
-          {INTRO[tab] && <p className="pt-1.25 text-small text-ink-muted">{INTRO[tab]}</p>}
-          <Panel />
-        </section>
-      </div>
-    </>
+    <SettingsLayout
+      sections={[
+        { label: 'Profile', Panel: ProfilePanel },
+        { label: 'Billing rules', intro: 'Rates apply based on the work date. Existing entries keep their historical rate.', Panel: BillingRules },
+        { label: 'AI preferences', intro: 'Tally calculates amounts with math. AI only reads descriptions and project names.', Panel: AiPreferences },
+        { label: 'Team', intro: 'Employees only see assigned projects, their own entries, and billing requests sent to them.', Panel: Team },
+        { label: 'Notifications', Panel: Notifications },
+        { label: 'Integrations', Panel: Integrations },
+        { label: 'Data & privacy', intro: "Demo only: these aren't production security controls.", Panel: DataPrivacy },
+      ]}
+    />
   )
 }

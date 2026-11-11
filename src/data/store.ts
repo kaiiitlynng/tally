@@ -17,6 +17,11 @@ export interface Project {
   status: 'Active' | 'Completed'
   deadline: string
   completedDate?: string // yyyy-mm-dd
+  /** Set in the New project flow. */
+  frequency?: string
+  template?: string
+  /** "Custom project rates": per-person hourly rate on this project; overrides the firm rate card. */
+  customRates?: Record<string, number>
 }
 
 export interface Entry {
@@ -119,6 +124,7 @@ export interface MemberPrefs {
   billable: boolean
   reminders: boolean
   messageAlerts: boolean
+  /** Email notifications pushed to your account email (no integration needed). Demo only: nothing is sent. */
   emailCopies: boolean
 }
 export const defaultPrefs: MemberPrefs = { defaultProjectId: '', billable: true, reminders: true, messageAlerts: true, emailCopies: false }
@@ -126,6 +132,8 @@ export const defaultPrefs: MemberPrefs = { defaultProjectId: '', billable: true,
 export interface Store {
   /** Per-person settings, keyed by name; missing = defaultPrefs. */
   memberPrefs: Record<string, MemberPrefs>
+  /** Profile edits (Settings → Profile), keyed by the person's original name: display name and photo (data URL). */
+  profiles: Record<string, { name?: string; avatar?: string }>
   projects: Project[]
   /** Firm members with Tally access (Settings → Team). Removing someone keeps their entries and rate history. */
   team: TeamMember[]
@@ -292,6 +300,7 @@ const flags: Flag[] = [
 export function initialStore(): Store {
   return structuredClone({
     memberPrefs: {},
+    profiles: {},
     projects,
     team: people.map((name) => ({ name, email: `${name.toLowerCase().replace(' ', '.')}@hartwellknox.example`, role: name === partner.name ? 'Partner' : 'Employee' })),
     entries,
@@ -485,7 +494,7 @@ export function entryFromRow(s: Store, row: { date: string; hours: number; descr
     employee: row.employee,
     projectId,
     hours: row.hours,
-    rate: s.rates[row.employee],
+    rate: rateFor(s, row.employee, projectId),
     description: row.description,
     billable: true,
     status: 'Submitted',
@@ -529,6 +538,12 @@ export function isUnread(m: Message, person: string, role: Role) {
   const lastFrom = m.replies.at(-1)?.from ?? m.from
   return involved && lastFrom !== person && m.unreadBy.includes(role)
 }
+
+/** Hourly rate for a person on a project: the project's custom rate if set, else the firm rate card. */
+export const rateFor = (s: Store, person: string, projectId: string) => s.projects.find((p) => p.id === projectId)?.customRates?.[person] ?? s.rates[person]
+
+/** Name to show for a person (Settings → Profile can change it; data keeps the original name as the key). */
+export const displayName = (s: Store, person: string) => s.profiles[person]?.name?.trim() || person
 
 export const projectName = (s: Store, projectId: string) => s.projects.find((p) => p.id === projectId)?.name ?? 'Unknown project'
 

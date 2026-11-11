@@ -1,5 +1,5 @@
 import { uid, useDemo } from '../components/DemoContext'
-import { demoToday, entryIsLocked, type Entry, type EntryForm, type EntryWarning } from '../data/store'
+import { demoToday, entryIsLocked, rateFor, type Entry, type EntryForm, type EntryWarning } from '../data/store'
 
 /**
  * Create or update a time entry for the signed-in user (ported from the prototype's `commit`).
@@ -22,7 +22,7 @@ export function useCommitEntry() {
         employee: me.name,
         projectId: form.projectId,
         hours: Number(form.hours),
-        rate: s.rates[me.name],
+        rate: rateFor(s, me.name, form.projectId),
         description: form.description.trim(),
         billable: form.billable,
         status,

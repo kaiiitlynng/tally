@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router'
+import { Link, NavLink } from 'react-router'
 import { useDemo } from './DemoContext'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
@@ -150,16 +150,23 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="mt-auto">
-        <div className="flex items-center gap-2.5 border-t border-line px-1 pt-4">
-          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-avatar text-caption font-semibold text-avatar-ink">
-            {me.initials}
-          </span>
+      <div className="mt-auto border-t border-line pt-2">
+        {/* Opens Settings → Profile (owner request 2026-11-10). */}
+        <Link
+          to="/settings"
+          aria-label={`${me.displayName}, ${me.role}: open profile settings`}
+          className="-mx-1 flex items-center gap-2.5 rounded-sm px-2 py-2 transition-colors hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          {me.avatar ? (
+            <img src={me.avatar} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+          ) : (
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-avatar text-caption font-semibold text-avatar-ink">{me.initials}</span>
+          )}
           <div className="min-w-0">
-            <p className="truncate text-body font-semibold text-ink">{me.name}</p>
+            <p className="truncate text-body font-semibold text-ink">{me.displayName}</p>
             <p className="truncate text-caption text-ink-muted">{me.role}</p>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   )
