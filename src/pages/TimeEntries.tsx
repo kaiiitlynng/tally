@@ -11,6 +11,10 @@ import { HeldRows } from '../sections/time/HeldRows'
 export interface TimeIntent {
   projectId: string
   mode: 'log' | 'entries'
+  /** With "entries": highlight and scroll to this entry (links from Messages). */
+  entryId?: string
+  /** With "entries": billing period to open on ('current' when omitted; see EntriesToolbar PeriodFilter). */
+  period?: string
 }
 
 /**
@@ -37,7 +41,7 @@ export default function TimeEntries() {
 
   // Drop the hand-offs from history so a refresh doesn't replay them.
   useEffect(() => {
-    if (intent?.mode === 'entries') window.setTimeout(() => entriesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    if (intent?.mode === 'entries' && !intent.entryId) window.setTimeout(() => entriesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
     if (intent || importNow || params.size) navigate({ search: '' }, { replace: true, state: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -63,7 +67,13 @@ export default function TimeEntries() {
         }
       />
       {role === 'partner' && <HeldRows />}
-      <EntriesSection ref={entriesRef} initialProjectFilter={intent?.mode === 'entries' ? intent.projectId : undefined} onNotice={toast} />
+      <EntriesSection
+        ref={entriesRef}
+        initialProjectFilter={intent?.mode === 'entries' ? intent.projectId : undefined}
+        initialPeriod={intent?.mode === 'entries' ? intent.period : undefined}
+        highlightEntry={intent?.mode === 'entries' ? intent.entryId : undefined}
+        onNotice={toast}
+      />
       {adding && <AddTimeDialog initialMode={adding.mode} importNow={adding.importNow} initialProjectId={adding.projectId} onClose={close} />}
     </>
   )

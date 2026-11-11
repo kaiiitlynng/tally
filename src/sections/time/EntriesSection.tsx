@@ -3,9 +3,10 @@ import { useDemo } from '../../components/DemoContext'
 import { Pill, type PillTone } from '../../components/Pill'
 import { FIRST, ROW, TABLE, TABLE_WRAP, TD, TH } from '../../components/tableStyles'
 import { SectionHeading } from '../../components/SectionHeading'
-import { currentPeriod, displayStatus, entryIsInPeriod, entryIsLocked, formatHours, periodLabel, projectName, tableDate, type DisplayStatus, type Entry } from '../../data/store'
+import { archivedProjects, projectById } from '../../data/history'
+import { displayStatus, entryIsLocked, formatHours, projectName, tableDate, type DisplayStatus, type Entry } from '../../data/store'
 import { DeleteEntryDialog, EditEntryDialog, LockedEntryDialog } from './EntryDialogs'
-import { DEFAULT_SORT, EntriesToolbar, FilterChips, emptyFilters, type EntryFilters, type EntrySort, type SortKey } from './EntriesToolbar'
+import { DEFAULT_SORT, EntriesToolbar, FilterChips, defaultFilters, isDefaultFilters, matchesPeriod, periodOptions, periodText, type EntryFilters, type EntrySort, type PeriodFilter, type SortKey } from './EntriesToolbar'
 
 /** Display text for statuses; "Flagged" reads as "Needs review" (the value stays the same for filters). */
 export const statusLabel = (s: string) => (s === 'Flagged' ? 'Needs review' : s)
@@ -20,7 +21,8 @@ const TONE: Record<DisplayStatus, PillTone> = {
 // Column widths set by the owner (2026-11-10), replacing Figma 36:1374 / 36:12865: columns sit snug at fixed widths,
 // the last column takes the leftover space, Description wraps. The card scrolls sideways when narrower than the sum.
 const PARTNER_COLS: (number | undefined)[] = [96, 144, 254, 340, 136, 96, 144, undefined]
-const EMPLOYEE_COLS: (number | undefined)[] = [240, 340, 104, 144, undefined]
+// Employee: hours and status sit closer to the description so the actions column has room (owner, 2026-11-10).
+const EMPLOYEE_COLS: (number | undefined)[] = [240, 300, 80, 136, undefined]
 
 
 /** Column header that sorts on click; a second click reverses (spec item 2). */
@@ -63,13 +65,24 @@ function RowActions({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => v
 }
 
 /** Entries list: partner "All submitted time" (Figma 36:1365) / employee "My entries" (36:12842). */
-export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: string; onNotice: (msg: string) => void }>(function EntriesSection(
-  { initialProjectFilter, onNotice },
+export const EntriesSection = forwardRef<
+  HTMLElement,
+  {
+    initialProjectFilter?: string
+    /** Billing period to open on (deep links); defaults to the current period. */
+    initialPeriod?: PeriodFilter
+    /** Entry to highlight and scroll to (opened from Messages). */
+    highlightEntry?: string
+    onNotice: (msg: string) => void
+  }
+>(function EntriesSection(
+  { initialProjectFilter, initialPeriod, highlightEntry, onNotice },
   ref,
 ) {
   const { store, role, me } = useDemo()
   const [filters, setFilters] = useState<EntryFilters>({
-    ...emptyFilters,
+    ...defaultFilters,
+    period: initialPeriod ?? defaultFilters.period,
     projectId: initialProjectFilter ?? '',
   })
   const [sort, setSort] = useState<EntrySort>(DEFAULT_SORT)
@@ -79,18 +92,29 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
   const [locked, setLocked] = useState<Entry | null>(null)
 
   useEffect(() => {
-    if (initialProjectFilter) setFilters((f) => ({ ...f, projectId: initialProjectFilter }))
-  }, [initialProjectFilter])
+    if (initialProjectFilter) setFilters((f) => ({ ...f, projectId: initialProjectFilter, period: initialPeriod ?? f.period }))
+  }, [initialProjectFilter, initialPeriod])
 
-  const name = (e: Entry) => projectName(store, e.projectId)
-  const status = (e: Entry) => displayStatus(store, e)
-  const customRange = Boolean(filters.dateFrom || filters.dateTo)
-  const inRange = (e: Entry) => (!filters.dateFrom || e.date >= filters.dateFrom) && (!filters.dateTo || e.date <= filters.dateTo)
+  useEffect(() => {
+    if (!highlightEntry) return
+    const t = window.setTimeout(() => document.getElementById(`entry-row-${highlightEntry}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+    return () => window.clearTimeout(t)
+  }, [highlightEntry])
 
-  const base =
-    role === 'partner'
-      ? [...store.entries].reverse().filter(inRange)
-      : store.entries.filter((e) => e.employee === me.name && (customRange ? inRange(e) : entryIsInPeriod(e.date, currentPeriod)))
+  const name = (e: Entry) => projectById(store, e.projectId)?.name ?? projectName(store, e.projectId)
+  // Employees see "Needs review" only once the partner has actually asked them about that entry (an open
+  // message linked to it); Tally's own flags stay with the partner until then.
+  const askedAbout = (e: Entry) => store.messages.some((m) => m.entryId === e.id && m.to === me.name && m.status === 'Open')
+  const status = (e: Entry) => {
+    const st = displayStatus(store, e)
+    if (role === 'employee' && st === 'Flagged' && !askedAbout(e)) return e.status === 'Updated after submission' ? 'Updated' : e.status
+    return st
+  }
+  // Every row this view could show (all periods), then the billing-period filter, which is a visible, removable
+  // view filter (chip + filter panel) rather than a hidden rule. Defaults to the current period.
+  const scopeAll = role === 'partner' ? [...store.entries].reverse() : store.entries.filter((e) => e.employee === me.name)
+  const periods = periodOptions(scopeAll.map((e) => e.date))
+  const base = scopeAll.filter((e) => matchesPeriod(e.date, filters))
 
   const term = search.trim().toLowerCase()
   const visible = base
@@ -116,23 +140,21 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
       return d || a.date.localeCompare(b.date) || last(a).localeCompare(last(b))
     })
 
-  const structuredActive = customRange || Boolean(filters.employee || filters.projectId || filters.status || filters.billable || filters.source)
-  const filtersActive = structuredActive || Boolean(search)
-  const clearAll = () => {
-    setFilters(emptyFilters)
+  // "Changed from the saved view" drives the filter button highlight and "Reset view", like a Notion view.
+  const structuredActive = !isDefaultFilters(filters)
+  const otherFilters = Boolean(filters.employee || filters.projectId || filters.status || filters.billable || filters.source || search)
+  const resetView = () => {
+    setFilters(defaultFilters)
     setSearch('')
   }
+  // The billing-period chip is rendered by FilterChips itself; these are the other active filters.
   const chips = [
-    customRange && {
-      label: 'Custom date range',
-      onRemove: () => setFilters({ ...filters, dateFrom: '', dateTo: '' }),
-    },
     filters.employee && {
       label: filters.employee,
       onRemove: () => setFilters({ ...filters, employee: '' }),
     },
     filters.projectId && {
-      label: projectName(store, filters.projectId),
+      label: projectById(store, filters.projectId)?.name ?? projectName(store, filters.projectId),
       onRemove: () => setFilters({ ...filters, projectId: '' }),
     },
     filters.status && {
@@ -150,17 +172,17 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
     search && { label: `Search: ${search}`, onRemove: () => setSearch('') },
   ].filter(Boolean) as { label: string; onRemove: () => void }[]
 
-  const total = base.reduce((sum, e) => sum + e.hours, 0)
-  const subtitle = `${customRange && role === 'employee' ? 'Custom date range' : `${role === 'employee' ? periodLabel(currentPeriod) : 'May'} billing period`} · ${formatHours(total)} total hours`
-  const projectsForFilter = store.projects.filter((p) => role === 'partner' || p.people.includes(me.name))
+  const total = visible.reduce((sum, e) => sum + e.hours, 0)
+  const projectsForFilter = [...store.projects, ...archivedProjects].filter((p) => role === 'partner' || p.people.includes(me.name))
 
   const guard = (entry: Entry, then: (e: Entry) => void) => (entryIsLocked(store, entry) ? setLocked(entry) : then(entry))
 
   return (
     <section ref={ref} aria-labelledby="entries-title" className="scroll-mt-20 pt-6.25">
-      <SectionHeading id="entries-title" title={role === 'employee' ? 'My entries' : 'All submitted time'} description={subtitle} />
+      {/* The billing period is shown as a filter chip below, so there's no subtext. */}
+      <SectionHeading id="entries-title" title={role === 'employee' ? 'My entries' : 'All submitted time'} />
       <EntriesToolbar
-        count={visible.length}
+        count={role === 'employee' ? visible.length : undefined}
         projects={projectsForFilter}
         employees={role === 'partner' ? [...new Set([...store.team.map((m) => m.name), ...store.entries.map((e) => e.employee)])] : undefined}
         filters={filters}
@@ -170,8 +192,9 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
         search={search}
         setSearch={setSearch}
         structuredActive={structuredActive}
+        periods={periods}
       />
-      <FilterChips chips={chips} onClearAll={clearAll} />
+      <FilterChips chips={chips} filters={filters} setFilters={setFilters} periods={periods} showReset={structuredActive || Boolean(search)} onReset={resetView} />
 
       <div className={`mt-1.75 ${TABLE_WRAP} overflow-x-auto shadow-card`}>
         <table className={TABLE}>
@@ -196,8 +219,8 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
               <tr>
                 <SortTh label="Project" k="project" sort={sort} setSort={setSort} className={FIRST} />
                 <SortTh label="Description" k="description" sort={sort} setSort={setSort} />
-                <SortTh label="Hours" k="hours" sort={sort} setSort={setSort} className="pl-6" />
-                <SortTh label="Status" k="status" sort={sort} setSort={setSort} className="pl-6" />
+                <SortTh label="Hours" k="hours" sort={sort} setSort={setSort} />
+                <SortTh label="Status" k="status" sort={sort} setSort={setSort} />
                 <th scope="col" className={`${TH} pr-4`}>
                   Actions
                 </th>
@@ -207,7 +230,7 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
           <tbody>
             {visible.map((e) =>
               role === 'partner' ? (
-                <tr key={e.id} className={ROW}>
+                <tr key={e.id} id={`entry-row-${e.id}`} aria-current={highlightEntry === e.id ? 'true' : undefined} className={`${ROW} ${highlightEntry === e.id ? 'bg-highlight' : ''}`}>
                   <td className={`${TD} ${FIRST}`}>{tableDate(e.date)}</td>
                   <td className={`${TD} truncate pl-6`}>{e.employee}</td>
                   <td className={`${TD} truncate pl-6`}>{name(e)}</td>
@@ -220,11 +243,11 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
                   <td className={`${TD} pr-4`} />
                 </tr>
               ) : (
-                <tr key={e.id} className={ROW}>
+                <tr key={e.id} id={`entry-row-${e.id}`} aria-current={highlightEntry === e.id ? 'true' : undefined} className={`${ROW} ${highlightEntry === e.id ? 'bg-highlight' : ''}`}>
                   <td className={`${TD} truncate ${FIRST}`}>{name(e)}</td>
                   <td className={`${TD} break-words whitespace-normal`}>{e.description}</td>
-                  <td className={`${TD} pl-6`}>{formatHours(e.hours)}</td>
-                  <td className={`${TD} pl-6`}>
+                  <td className={TD}>{formatHours(e.hours)}</td>
+                  <td className={TD}>
                     <Pill tone={TONE[status(e)]}>{statusLabel(status(e))}</Pill>
                   </td>
                   <td className={`${TD} pr-4`}>
@@ -237,15 +260,28 @@ export const EntriesSection = forwardRef<HTMLElement, { initialProjectFilter?: s
         </table>
         {visible.length === 0 && (
           <div className="border-t border-line-row px-5 py-10.5 text-center text-small text-ink-muted">
-            <p>{filtersActive ? 'No entries match your filters.' : 'No time entries for this month yet.'}</p>
-            {filtersActive && (
-              <button type="button" onClick={clearAll} className="mt-2.25 text-caption text-link underline">
-                Clear filters
+            {/* Empty because of the period alone → offer all periods; because of other filters → reset the view. */}
+            <p>{otherFilters ? 'No entries match your filters.' : `No entries in ${periodText(filters)}.`}</p>
+            {otherFilters ? (
+              <button type="button" onClick={resetView} className="mt-2.25 text-caption text-link underline">
+                Reset view
               </button>
+            ) : (
+              filters.period !== 'all' && (
+                <button type="button" onClick={() => setFilters({ ...filters, period: 'all', dateFrom: '', dateTo: '' })} className="mt-2.25 text-caption text-link underline">
+                  Show all periods
+                </button>
+              )
             )}
           </div>
         )}
       </div>
+      {/* Employee summary row (like a Notion calculation): total hours of the rows shown, after every filter. */}
+      {role === 'employee' && visible.length > 0 && (
+        <p className="flex justify-end gap-2 px-4 pt-2 text-caption text-ink-muted">
+          Total <b className="font-semibold text-ink tabular-nums">{formatHours(total)} hrs</b>
+        </p>
+      )}
 
       {editing && (
         <EditEntryDialog

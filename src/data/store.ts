@@ -258,6 +258,9 @@ const entries: Entry[] = [
   e('e5', '2025-05-22', 'Vanessa Hart', 'montrose', 4.2, 850, 'Reviewed damages model and methodology', 'Direct'),
   e('e6', '2025-05-13', 'Nora Chen', 'aster', 9.3, 620, 'Prepared quality of earnings schedules', 'Excel', 'Nora_May_part1.xlsx, row 4'),
   e('e7', '2025-05-09', 'Ryan Cole', 'northstar', 6.6, 465, 'Built back-pay model and payroll tie-out', 'Excel', 'Ryan_May.xlsx, row 8'),
+  // Past project (Harlow Foods closed in April; see history.ts). Same line as its April invoice, so "View entries"
+  // on a past project has something to show. Read-only: entryIsLocked treats closed projects as locked.
+  e('e8', '2025-04-11', 'Nora Chen', 'harlow', 5.5, 620, 'Lost-profits model update', 'Excel', 'Nora_April.xlsx, row 7'),
 ]
 
 const flags: Flag[] = [
@@ -534,7 +537,8 @@ export const displayStatus = (s: Store, entry: Entry): DisplayStatus =>
   entryIsFlagged(s, entry.id) ? 'Flagged' : entry.status === 'Updated after submission' ? 'Updated' : entry.status
 
 /** Entries on approved/exported invoices can no longer be edited or deleted. */
-export const entryIsLocked = (s: Store, entry: Entry) => ['Approved', 'Exported', 'Sent'].includes(s.invoiceStatus[entry.projectId])
+export const entryIsLocked = (s: Store, entry: Entry) =>
+  !s.invoiceStatus[entry.projectId] /* closed project from an earlier cycle */ || ['Approved', 'Exported', 'Sent'].includes(s.invoiceStatus[entry.projectId])
 
 export const isFinal = (status: InvoiceStatus) => status === 'Approved' || status === 'Exported' || status === 'Sent'
 

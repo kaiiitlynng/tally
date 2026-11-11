@@ -72,9 +72,6 @@ export default function EmployeeSettings() {
           <Row id="pref-messages" label="Billing questions and replies" hint="New messages and replies in your conversations">
             <Switch checked={prefs.messageAlerts} labelledBy="pref-messages" onChange={(v) => set({ messageAlerts: v })} />
           </Row>
-          <Row id="pref-email" label="Email copies" hint="Demo only: no email is sent in this prototype">
-            <Switch checked={prefs.emailCopies} labelledBy="pref-email" onChange={(v) => set({ emailCopies: v })} />
-          </Row>
         </Card>
 
         <Card title="Time entry defaults" description="Pre-filled on new entries.">

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router'
-import { DarkButton, OutlineButton } from '../components/Button'
+import { Link, useSearchParams } from 'react-router'
+import { DarkButton } from '../components/Button'
 import { useDemo } from '../components/DemoContext'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/Icon'
 import { PageTitle } from '../components/PageTitle'
-import { Pill } from '../components/Pill'
 import { NewMessageModal } from '../sections/messages/NewMessageModal'
+import { periodFor } from '../sections/time/EntriesToolbar'
+import type { TimeIntent } from './TimeEntries'
 import { addReply, allFlags, isUnread, initials, isFinal, isOpen, notify, partner, setFlagStatus } from '../data/store'
 
 const AVATAR = 'grid size-7 shrink-0 place-items-center rounded-full border-2 border-member-ring bg-member text-caption'
@@ -41,6 +42,7 @@ export default function Messages() {
   const [composing, setComposing] = useState(false)
   const message = visible.find((m) => m.id === selectedId) ?? visible[0]
   const entry = message?.entryId ? store.entries.find((e) => e.id === message.entryId) : undefined
+  const project = message?.projectId ? store.projects.find((p) => p.id === message.projectId) : undefined
   const other = (m: (typeof visible)[number]) => (m.from === me.name ? m.to : m.from)
   const threadRef = useRef<HTMLDivElement>(null)
   // Keep the newest message in view when a thread opens or a reply arrives.
@@ -69,7 +71,7 @@ export default function Messages() {
    * also replaces the entry description (original preserved). A partner reply re-opens the thread while a
    * linked flag is still open.
    */
-  function sendReply(correct = false) {
+  function sendReply() {
     if (!message || !reply.trim()) return
     const body = reply.trim()
     const to = other(message)
@@ -81,13 +83,6 @@ export default function Messages() {
         if (linked.some(isOpen)) m.status = 'Open'
       } else {
         m.status = 'Replied'
-        if (correct && m.entryId) {
-          const e = s.entries.find((x) => x.id === m.entryId)!
-          const old = e.description
-          e.original = old
-          e.description = body
-          s.audit.unshift(`${me.firstName} corrected “${old}”; original preserved`)
-        }
         linked.filter(isOpen).forEach((f) => setFlagStatus(s, f.id, 'Response received'))
         if (m.projectId && linked.some(isOpen) && !isFinal(s.invoiceStatus[m.projectId])) s.invoiceStatus[m.projectId] = 'In review'
       }
@@ -145,14 +140,27 @@ export default function Messages() {
               <header className="flex items-center border-b border-line px-4.75 py-4">
                 <div className="flex-1">
                   <b className="block text-body font-semibold">{message.subject}</b>
-                  <p className="pt-0.75 text-caption text-ink-muted">{store.projects.find((p) => p.id === message.projectId)?.name}</p>
+                  {/* Anything a message is about links back to where it lives: the project's entries here, the entry below. */}
+                  {project && (
+                    <Link
+                      to="/time"
+                      state={{ intent: { projectId: project.id, mode: 'entries' } satisfies TimeIntent }}
+                      className="mt-0.75 inline-block rounded-xs text-caption text-ink-muted hover:text-link hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+                    >
+                      {project.name}
+                    </Link>
+                  )}
                 </div>
-                <Pill tone={message.status === 'Replied' ? 'success' : 'accent'}>{message.status}</Pill>
               </header>
               <div ref={threadRef} className="min-h-0 flex-1 overflow-auto p-6">
                 <Bubble from={message.from} time={message.time} body={message.body} mine={message.from === me.name} />
                 {entry && (
-                  <div className="mx-auto mb-4.5 max-w-140 rounded-md border border-line-step bg-white p-3.25">
+                  <Link
+                    to="/time"
+                    state={{ intent: { projectId: entry.projectId, mode: 'entries', entryId: entry.id, period: periodFor(entry.date) } satisfies TimeIntent }}
+                    aria-label={`Open this time entry in ${role === 'partner' ? 'Time Entries' : 'My Time'}`}
+                    className="mx-auto mb-4.5 block max-w-140 rounded-md border border-line-step bg-white p-3.25 transition-colors hover:border-brand-200 hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
+                  >
                     <div className="flex items-center gap-2">
                       <Icon name="nav-time-entries" size={18} />
                       <span>
@@ -163,7 +171,7 @@ export default function Messages() {
                       </span>
                     </div>
                     <p className="mt-2.5 rounded-sm bg-linked-body p-2.5 text-small">{entry.description}</p>
-                  </div>
+                  </Link>
                 )}
                 {message.replies.map((r, i) => (
                   <Bubble key={i} from={r.from} time={r.time} body={r.body} mine={r.from === me.name} />
@@ -184,33 +192,13 @@ export default function Messages() {
                       sendReply()
                     }
                   }}
-                  aria-describedby="reply-hint"
-                  placeholder={role === 'employee' && entry ? 'Answer the question, or write a clear, client-ready description…' : 'Write a reply…'}
+                  placeholder="Write a reply…"
                   className="mt-1.5 min-h-16 w-full resize-none rounded-md border border-line-field bg-white p-2.75 text-small text-ink placeholder:text-ink-placeholder focus:outline-2 focus:outline-accent"
                 />
-                <div className="mt-2.25 flex items-center justify-end gap-2">
-                  {role === 'employee' && entry ? (
-                    <>
-                      <span id="reply-hint" className="mr-auto text-caption text-ink-muted">
-                        Enter to send, Shift+Enter for a new line. Using it as the new description keeps the original.
-                      </span>
-                      <OutlineButton onClick={() => sendReply()} disabled={!reply.trim()}>
-                        Send reply
-                      </OutlineButton>
-                      <DarkButton onClick={() => sendReply(true)} disabled={!reply.trim()}>
-                        Use as new description
-                      </DarkButton>
-                    </>
-                  ) : (
-                    <>
-                      <span id="reply-hint" className="mr-auto text-caption text-ink-muted">
-                        Enter to send, Shift+Enter for a new line.
-                      </span>
-                      <DarkButton onClick={() => sendReply()} disabled={!reply.trim()}>
-                        Send reply
-                      </DarkButton>
-                    </>
-                  )}
+                <div className="mt-2.25 flex justify-end">
+                  <DarkButton onClick={() => sendReply()} disabled={!reply.trim()}>
+                    Send
+                  </DarkButton>
                 </div>
               </div>
             </>
